@@ -1,0 +1,17 @@
+{
+    "name": "xare/wp-plugin-geslib",
+    "description": "A WP geslib plugin",
+    "type": "project",
+    "license": "GPL",
+    "autoload": {
+        "psr-4": {
+            "Inc\\Geslib\\": "./inc"
+        }
+    },
+    "authors": [{
+        "name": "Juan Etxenike Almeida",
+        "email": "xaresd@gmail.com"
+    }],
+    "minimum-stability": "dev",
+    "require": {}
+}

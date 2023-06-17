@@ -11,7 +11,7 @@ class GeslibApiLines {
 			"geslib_id", 
 			"description", 
 			"author", 
-			"pvp_pstas", 
+			"pvp_ptas", 
 			"isbn", 
 			"ean", 
 			"num_paginas", 
@@ -63,52 +63,78 @@ class GeslibApiLines {
 			"talla", 
 			"color", 
 			"idioma_original", 
-			"titulo_original"
+			"titulo_original",
+			"pack",
+			"importe_canon",
+			"unidades_compra",
+			"descuento_maximo"
 			];
 	
+	private $db;
+	private $mainFolderPath;
+
+	public function __construct() {
+		$this->mainFolderPath = WP_CONTENT_DIR . '/uploads/geslib/';
+		$this->db = new GeslibApiDbManager();
+	}
 	public function storeToLines(){
 		// 1. Read the log table
+		$filename = $this->db->getLogQueuedFile();
+		$log_id = $this->db->getLogId($filename);
 		// 2. Read the file and store in lines table
-		
+		$this->readFile($this->mainFolderPath.$filename, $log_id);
 	}
 	
-	private function readFile($path) {
-		$lineas = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	private function readFile($path, $log_id) {
+		echo $path;
+		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-		  foreach ($lineas as $linea) {
-			$datos = explode('|', $linea);
-			$function_name = 'procesar' . $data[0];
+		foreach ($lines as $line) {
 
+			$data = explode( '|', $line ) ;
+			array_pop($data);
+			$function_name = 'process' . $data[0];
 			if (method_exists($this, $function_name)) {
-			  $this->{$function_name}($datos);
+			  $this->{$function_name}($data, $log_id);
 			} else {
 			  // Handle unexpected values for $datos[0] if needed.
 			}
 		  }
 	}
 	
-	private function procesarGP4($data) {
-		if(count($datos) !== count(self::$productKeys){
-			// return error
+	private function processGP4($data, $log_id) {
+		echo "inside ProcessGP4";
+		echo '/n';
+		echo count($data);
+		echo '\n';
+		echo count(self::$productKeys);
+		echo '/n';
+		if(count($data) !== count(self::$productKeys)) {
+			return ;
 		} else {
-			$content_array = array_combine(self::$productKeys,$data);
+			if($data[1] === 'A') {
+				$content_array = array_combine(self::$productKeys,$data);
+				var_dump($content_array);
+				$this->db->insertProductData($content_array, $log_id);
+			}
 		}
-		$this->mergeContent($geslib_id, $content_array);
+		
+		//$this->mergeContent($data['geslib_id'], $content_array);
 	}
 
-	private function procesar6E($datos) {
+	private function process6E($data) {
 		// Procesa las líneas 6E aquí
 	}
 
-	private function procesar6TE($datos) {
+	private function process6TE($data) {
 		// Procesa las líneas 6TE aquí
 	}
 
-	private function procesarAUT($datos) {
+	private function processAUT($data) {
 		// Procesa las líneas AUT aquí
 	}
 
-	private function procesarAUTBIO($datos) {
+	private function processAUTBIO($data) {
 		// Procesa las líneas AUTBIO aquí
 	}
 	
@@ -116,8 +142,7 @@ class GeslibApiLines {
 		//this function is called when the product has been created but we need to add more data to its content json string
 		
 		//1. Get the content given the $geslib_id
-		$geslibApiDbManager = new GeslibApiDbManager();
-		$result = $geslibApiDbManager->fetchContent($geslib_id);
+		$result = $this->db->fetchContent($geslib_id);
 		
 		if($result){
 			$existing_content = json_decode($result, true);
@@ -126,10 +151,11 @@ class GeslibApiLines {
 		$content = json_encode($content_array);
 		if ($result) {
 			// update
-			$geslibApiDbManager->updateGeslibLines($geslib_id, $content);
+			$this->db->updateGeslibLines($geslib_id, $content);
 		} else {
-			$geslibApiDbManager->insertGeslibLines($geslib_id, $content)
+			$this->db->insertGeslibLines($geslib_id, $content);
 		}
 	
 	}
+
 }

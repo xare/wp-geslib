@@ -59,6 +59,20 @@ class GeslibApiDbManager {
         return $count > 0;
     }
 
+	public function getLogQueuedFile() {
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LOG_TABLE;
+		
+		$query = $wpdb->prepare(
+            "SELECT filename 
+			FROM {$table}
+			WHERE status = '%s'",
+            'logged'
+        );
+
+        return $wpdb->get_var($query);
+	}
+
 	public function store2geslibLines($data_array) {
 		global $wpdb;
 		
@@ -172,7 +186,70 @@ class GeslibApiDbManager {
 		$term_slug = str_replace(" ", "_", $term_name);
 	  
 		return $term_slug;
-  }
+  	}
+
+	public function fetchContent($geslib_id) {
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+
+		$query = $wpdb->prepare( 
+						"SELECT 
+							content 
+						FROM $table
+						WHERE 
+							geslib_id = '%d'",
+						$geslib_id);
+		return $wpdb->get_var( $query );
+	}
+
+	public function updateGeslibLines( $geslib_id, $content){
+		global $wpdb;
+		$wpdb->update(
+			$wpdb->prefix.self::GESLIB_LINES_TABLE,
+			['content' => $content],
+			['geslib_id' => $geslib_id].
+			'%s',
+			'%d'
+		);
+	}
+
+	public function insertGeslibLines( $geslib_id, $content){
+		global $wpdb;
+		$wpdb->insert(
+			$wpdb->prefix.self::GESLIB_LINES_TABLE,
+			[
+				'geslib_id' => $geslib_id,
+				'content' => $content
+			],
+		);
+	}
+
+	public function insertProductData($content_array, $log_id) {
+		global $wpdb;
+		$wpdb->insert(
+			$wpdb->prefix.self::GESLIB_LINES_TABLE,
+			[
+				'log_id' => $log_id,
+				'geslib_id' => $content_array['geslib_id'],
+				'action' => 'insert',
+				'entity' => 'product',
+				'content' => json_encode($content_array),
+				'queued' => 1
+			],
+		);
+	}
+
+	public function getLogId($filename){
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LOG_TABLE;
+		$query = $wpdb->prepare("SELECT 
+									id 
+								FROM $table 
+								WHERE filename='%s'", 
+								$filename);
+		return $wpdb->get_var($query);
+
+	}
 
 
 }

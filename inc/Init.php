@@ -2,6 +2,7 @@
 
 namespace Inc\Geslib;
 use Inc\Geslib\Commands\GeslibHelloCommand;
+use Inc\Geslib\Commands\GeslibLogCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllProductsCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllTermsCommand;
 
@@ -15,6 +16,7 @@ final class Init
   public static function get_services():Array {
     return [
       GeslibHelloCommand::class,
+      GeslibLogCommand::class,
 	    GeslibDeleteAllProductsCommand::class,
 	    GeslibDeleteAllTermsCommand::class
     ];

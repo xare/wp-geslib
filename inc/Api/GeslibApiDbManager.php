@@ -2,9 +2,11 @@
 
 namespace Inc\Geslib\Api;
 
+use Inc\Geslib\Api\GeslibApiLog;
+
 class GeslibApiDbManager {
-	CONST GESLIB_LINES_TABLE = 'geslib_lines';
-	CONST GESLIB_LOG_TABLE = 'geslib_log';
+	const GESLIB_LINES_TABLE = 'geslib_lines';
+	const GESLIB_LOG_TABLE = 'geslib_log';
 	static $geslibLinesKeys = [
 		'log_id', // int relation oneToMany with geslib_log
 		'geslib_id', // int 
@@ -16,37 +18,47 @@ class GeslibApiDbManager {
 	];
 	static $geslibLogKeys = [
 		'filename', // string inter000
-		'start-date', // date
-		'end_date' // date
-		'lines', // int number of lines 
+		'start_date', // date
+		'end_date', // date
+		'lines_count', // int number of lines 
 		'status', // string waiting | enqueued | processed
 	];
 	
-	public function store2geslibLog($filename){
+	public function insertLogData( $filename, $status, $linesCount  ) {
 		global $wpdb;
-		//1. check the line exists already and then return false
-		$sql = "SELECT * FROM {$wbdb->prefix}.{GESLIB_LOG_TABLE}
-				WHERE filename=%s";
-		$row = $wpdb->get_row($wpdb->prepare($sql));
-		//2. if line does not exist insert in the table
-		$geslibApiReadFiles = new GeslibApiReadFiles();
-		if (null !== $row) return null;
-		else {
-			$geslibLogValues = [
-				$filename,
-				date('Y-m-d H:i:s'),
-				null,
-				$geslibApiReadFiles->countLines($filename),
-				'waiting'
-			];
-			$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
-			$wpdb->insert("{$wpdb->prefix}{GESLIB_LOG_TABLE},
-							$insertArray,
-							['%s'],
-							['%d']");
-		}
+		$geslibLogValues = [
+			$filename,
+			date('Y-m-d H:i:s'),
+			null,
+			$linesCount,
+			$status
+		];
+		$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
+		$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
+						$insertArray,
+						['%s', '%s', '%s', '%d', '%s']);
 	}
 	
+	/**
+     * Check if the filename exists in the wpgeslib_log table.
+     *
+     * @param string $filename
+     * @return bool
+     */
+    public function isFilenameExists($filename) {
+        global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LOG_TABLE;
+		$query = $wpdb->prepare(
+            "SELECT COUNT(*) 
+			FROM {$table}
+			WHERE filename = %s",
+            $filename
+        );
+        $count = $wpdb->get_var($query);
+
+        return $count > 0;
+    }
+
 	public function store2geslibLines($data_array) {
 		global $wpdb;
 		

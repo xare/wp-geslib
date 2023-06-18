@@ -72,10 +72,12 @@ class GeslibApiLines {
 	
 	private $db;
 	private $mainFolderPath;
+	private $geslibApiSanitize;
 
 	public function __construct() {
 		$this->mainFolderPath = WP_CONTENT_DIR . '/uploads/geslib/';
 		$this->db = new GeslibApiDbManager();
+		$this->geslibApiSanitize = new GeslibApiSanitize();
 	}
 	public function storeToLines(){
 		// 1. Read the log table
@@ -86,7 +88,6 @@ class GeslibApiLines {
 	}
 	
 	private function readFile($path, $log_id) {
-		echo $path;
 		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
 		foreach ($lines as $line) {
@@ -103,19 +104,15 @@ class GeslibApiLines {
 	}
 	
 	private function processGP4($data, $log_id) {
-		echo "inside ProcessGP4";
-		echo '/n';
-		echo count($data);
-		echo '\n';
-		echo count(self::$productKeys);
-		echo '/n';
+		
 		if(count($data) !== count(self::$productKeys)) {
 			return ;
 		} else {
-			if($data[1] === 'A') {
-				$content_array = array_combine(self::$productKeys,$data);
-				var_dump($content_array);
-				$this->db->insertProductData($content_array, $log_id);
+			
+			if( $data[1] === 'A' && $data[2] === '6311' ) {
+				$content_array = array_combine( self::$productKeys, $data );
+				$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
+				$this->db->insertProductData( $content_array, $log_id );
 			}
 		}
 		

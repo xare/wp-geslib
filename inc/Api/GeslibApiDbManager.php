@@ -78,7 +78,7 @@ class GeslibApiDbManager {
 		
 		$geslibLinesValues = [
 			$data_array['geslib_id'],
-			$filename,
+			$data_array['filename'],
 			'product',
 			json_encode($data_array),
 			1

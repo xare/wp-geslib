@@ -69,7 +69,54 @@ class GeslibApiLines {
 			"unidades_compra",
 			"descuento_maximo"
 			];
-	
+	static $lineTypes = [
+		'1L', // Editoriales
+		'1A', // Compañías discográficas
+		//"1P", // Familias de papelería
+		//"1R", // Publicaciones de prensa
+		"2", // Colecciones editoriales
+		"3", // Materias
+		"GP4", // Artículos
+		"EB", // eBooks (igual que los libros)
+		"IEB", // Información propia del eBook
+		"5", // Materias asociadas a los artículos
+		"BIC", // Materias IBIC asociadas a los artículos
+		"6", // Referencias de la librería
+		"6E", // Referencias del editor
+		"6I", // Índice del libro
+		"6T", // Referencias de la librería (traducidas)
+		"6TE", // Referencias del editor (traducidas)
+		"6IT", // Índice del libro (traducido)
+		//"LA", // Autores normalizados asociados a un artículo
+		"7", // Formatos de encuadernación
+		"8", // Idiomas
+		//"9", // Palabras vacías
+		//"B", // Stock
+		//"B2", // Stock por centros
+		"E", // Estados de artículos
+		//"CLI", // Clientes
+		"AUT", // Autores
+		//"I", // Indicador de carga inicial. Cuando este carácter aparece en la primera línea, indica que se están enviando todos los datos y de todas las entidades
+		//"IPC", // Incidencias en pedidos de clientes
+		//"P", // Promociones de artículos (globales a todos los centros)
+		//"PROCEN", // Promociones de artículos por centros
+		//"PC", // Pedidos de clientes
+		//"VTA", // Ventas
+		//"PAIS", // Países
+		//"CLOTE", // Lotes de artículos: Cabecera
+		//"LLOTE", // Lotes de artículos: Líneas
+		//"TIPART", // Tipos de artículos
+		//"CLASIF", // Clasificaciones de artículos
+		//"ATRA", // Traducciones asociadas a los artículos
+		//"ARTATR",
+		//"CA", // Claves alternativas asociadas a los artículos
+		//"CLOTCLI", // Lotes de clientes: Cabecera
+		//"LLOTCLI", // Lotes de clientes: Líneas
+		//"PROFES", // Profesiones
+		//"PROVIN", // Provincias
+		//"CAGRDTV", // Agrupaciones de descuentos de ventas: Cabecera
+		//"LAGRDTV" // Agrupaciones de descuentos de ventas: Líneas
+	];
 	private $db;
 	private $mainFolderPath;
 	private $geslibApiSanitize;
@@ -89,70 +136,99 @@ class GeslibApiLines {
 	
 	private function readFile($path, $log_id) {
 		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
 		foreach ($lines as $line) {
-
 			$data = explode( '|', $line ) ;
 			array_pop($data);
-			$function_name = 'process' . $data[0];
-			if (method_exists($this, $function_name)) {
-			  $this->{$function_name}($data, $log_id);
-			} else {
-			  // Handle unexpected values for $datos[0] if needed.
+			if(in_array($data[0], self::$lineTypes)) {
+				$function_name = 'process' . $data[0];
+				if (method_exists($this, $function_name)) {
+					$this->{$function_name}($data, $log_id);
+				} else {
+					// Handle unexpected values for $datos[0] if needed.
+				}
 			}
 		  }
 	}
 	
 	private function processGP4($data, $log_id) {
-		
+		// GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
 		if(count($data) !== count(self::$productKeys)) {
 			return ;
 		} else {
-			
-			if( $data[1] === 'A' && $data[2] === '6311' ) {
+			if( $data[1] === 'A' ) {
 				$content_array = array_combine( self::$productKeys, $data );
 				$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
 				$this->db->insertProductData( $content_array, $log_id );
 			}
 		}
 		
-		//$this->mergeContent($data['geslib_id'], $content_array);
+		//$this->mergeContent($data['geslib_id'], $content_array, $type);
 	}
 
-	private function process6E($data) {
+	private function process6E($data, $log_id) {
 		// Procesa las líneas 6E aquí
+		// 6E|Articulo|Contador|Texto|
+		// 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.\n\nAcompanyant les imatges, les paraules antigues de la Mediterr�nia. Ausi�s March, Estell�s, al-Russaf�, Llach, Espriu, Aub, Ibn Arab�, Lorca, Darwix o Kavafis. Veus de les tradicions que ens han forjat com a civilitzacions. Per� tamb� peda�os de relats i hist�ries poc conegudes que l'autor va descobrir durant tres mesos de conviv�ncia en aquest tros de Palestina. Hist�ries de saviesa i dolor. Hist�ries de paci�ncia i perseveran�a. Hist�ries de p�rdua i renaixen�a. Hist�ries de la bellesa oculta de Gaza.|
+		$geslib_id = $data[1];
+		$content_array['sinopsis'] = $data[3];
+		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
+		$this->mergeContent($geslib_id, $content_array, 'product');
 	}
 
-	private function process6TE($data) {
+	private function process6TE($data, $log_id) {
 		// Procesa las líneas 6TE aquí
 	}
 
-	private function processAUT($data) {
+	private function process1l($data, $log_id) {
+		//1L|B|codigo_editorial
+		//1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
+		//1L|A|1|VARIAS|VARIAS|ES|
+		if (in_array($data[1],['A','M'] )){
+			// Insert or Update
+			$this->insert2Gesliblines($data[2], $log_id, 'editorial', $data[1], $data[3]);
+		} else if ($data[1] == 'B' ){
+			// Delete
+
+		}
+	}
+	private function processAUT( $data, $log_id ) {
 		// Procesa las líneas AUT aquí
 	}
 
-	private function processAUTBIO($data) {
+	private function processAUTBIO( $data, $log_id ) {
 		// Procesa las líneas AUTBIO aquí
 	}
 	
-	private function mergeContent($geslib_id, $content_array) {
+	private function insert2Gesliblines( $geslib_id, $log_id, $type, $action, $data = null ) {
+		$data_array = [
+			'log_id' => $log_id,
+			'geslib_id' => $geslib_id,
+			'entity' => $type,
+			'action' => $action,
+			'content' => $data,
+			'queued' => 1
+		];
+		
+		$this->db->insert2GeslibLines( $data_array );
+	}
+
+	private function mergeContent( $geslib_id, $content_array, $type ) {
 		//this function is called when the product has been created but we need to add more data to its content json string
 		
 		//1. Get the content given the $geslib_id
-		$result = $this->db->fetchContent($geslib_id);
+		$result = $this->db->fetchContent( $geslib_id, $type );
 		
-		if($result){
-			$existing_content = json_decode($result, true);
-			$content_array = array_merge($existing_content, $content_array);
+		if( $result ){
+			$existing_content = json_decode( $result, true);
+			$content_array = array_merge( $existing_content, $content_array );
 		}
 		$content = json_encode($content_array);
-		if ($result) {
+		if ( $result ) {
 			// update
-			$this->db->updateGeslibLines($geslib_id, $content);
+			$this->db->updateGeslibLines($geslib_id, $type, $content);
 		} else {
-			$this->db->insertGeslibLines($geslib_id, $content);
+			return "error";
 		}
-	
 	}
 
 }

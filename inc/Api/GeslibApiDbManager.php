@@ -73,16 +73,10 @@ class GeslibApiDbManager {
         return $wpdb->get_var($query);
 	}
 
-	public function store2geslibLines($data_array) {
+	public function insert2geslibLines( $data_array ) {
+		//var_dump($data_array);
 		global $wpdb;
-		
-		$geslibLinesValues = [
-			$data_array['geslib_id'],
-			$data_array['filename'],
-			'product',
-			json_encode($data_array),
-			1
-		];
+		$wpdb->insert( $wpdb->prefix.self::GESLIB_LINES_TABLE, $data_array);
 	}
 	
 	
@@ -188,7 +182,7 @@ class GeslibApiDbManager {
 		return $term_slug;
   	}
 
-	public function fetchContent($geslib_id) {
+	public function fetchContent($geslib_id, $type) {
 		global $wpdb;
 		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
 
@@ -197,23 +191,29 @@ class GeslibApiDbManager {
 							content 
 						FROM $table
 						WHERE 
-							geslib_id = '%d'",
-						$geslib_id);
+							geslib_id = '%d'
+						AND 
+							entity = '%s'",
+						$geslib_id, $type);
 		return $wpdb->get_var( $query );
 	}
 
-	public function updateGeslibLines( $geslib_id, $content){
+	public function updateGeslibLines( $geslib_id, $type, $content){
 		global $wpdb;
+		//var_dump($content);
 		$wpdb->update(
 			$wpdb->prefix.self::GESLIB_LINES_TABLE,
 			['content' => $content],
-			['geslib_id' => $geslib_id].
+			[
+				'geslib_id' => $geslib_id,
+				'type' => $type
+			],
 			'%s',
 			'%d'
 		);
 	}
 
-	public function insertGeslibLines( $geslib_id, $content){
+	public function insertGeslibLines( $geslib_id, $log_id, $content ){
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix.self::GESLIB_LINES_TABLE,
@@ -225,6 +225,7 @@ class GeslibApiDbManager {
 	}
 
 	public function insertProductData($content_array, $log_id) {
+		
 		global $wpdb;
 		$wpdb->insert(
 			$wpdb->prefix.self::GESLIB_LINES_TABLE,
@@ -250,6 +251,4 @@ class GeslibApiDbManager {
 		return $wpdb->get_var($query);
 
 	}
-
-
 }

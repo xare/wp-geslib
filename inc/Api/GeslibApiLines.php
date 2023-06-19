@@ -136,13 +136,16 @@ class GeslibApiLines {
 	
 	private function readFile($path, $log_id) {
 		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		$i = 0;
 		foreach ($lines as $line) {
+			if ( $i > 1000) return false;
 			$data = explode( '|', $line ) ;
 			array_pop($data);
 			if(in_array($data[0], self::$lineTypes)) {
 				$function_name = 'process' . $data[0];
 				if (method_exists($this, $function_name)) {
 					$this->{$function_name}($data, $log_id);
+					$i++;
 				} else {
 					// Handle unexpected values for $datos[0] if needed.
 				}
@@ -158,7 +161,7 @@ class GeslibApiLines {
 			if( $data[1] === 'A' ) {
 				$content_array = array_combine( self::$productKeys, $data );
 				$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-				$this->db->insertProductData( $content_array, $log_id );
+				$this->db->insertProductData( $content_array,$data[1], $log_id );
 			}
 		}
 		
@@ -179,7 +182,7 @@ class GeslibApiLines {
 		// Procesa las líneas 6TE aquí
 	}
 
-	private function process1l($data, $log_id) {
+	private function process1L($data, $log_id) {
 		//1L|B|codigo_editorial
 		//1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
 		//1L|A|1|VARIAS|VARIAS|ES|
@@ -213,6 +216,8 @@ class GeslibApiLines {
 	}
 
 	private function mergeContent( $geslib_id, $content_array, $type ) {
+		var_dump($geslib_id);
+		var_dump($type);
 		//this function is called when the product has been created but we need to add more data to its content json string
 		
 		//1. Get the content given the $geslib_id

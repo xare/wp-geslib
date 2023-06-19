@@ -12,7 +12,7 @@ class GeslibApiDbManager {
 		'geslib_id', // int 
 		'filename', // string inter000
 		'action', // string insert|update|delete
-		'type', // string product | category | author | publisher
+		'entity', // string product | category | author | publisher
 		'content', // json
 		'queued' // boolean 0|1
 	];
@@ -81,52 +81,106 @@ class GeslibApiDbManager {
 	
 	
   
-  public function _readGeslibLinesTable(){
-      global $wpdb;
-      $table_name = $wpdb->prefix . 'geslib_lines';
-      $query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
-      $results = $wpdb->get_results($query);
-      
-      foreach ($results as $result) {
-        $this->_storeData($result->type, $result->id, $result->content);
-      }
-    }
-	
-	private function _storeData($type, $geslib_id, $content){
-      $store_data=[];
-      $function_name = 'store'.$type[0];
-      if (method_exists($this, $function_name)) {
-        $store_data[] = $this->{$function_name}($geslib_id,$content);
-      } else {
-        $store_data[] = 'EMPTY';
-      }
-      
-      return $store_data;
+  	public function _readGeslibLinesTable() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LINES_TABLE;
+		$query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
+		$results = $wpdb->get_results($query);
+		
+		foreach($results as $result) {
+			$this->_storeData($result->type, $result->id, $result->content);
+		}
     }
 
-    public function storepublisher( $geslib_id, $content ){
-      $content = json_decode( $content );
-      $term_name = $content['publisher'];
-      $term_slug = $this->_create_slug( $term_name );
-      $term_description = $term_name;
-      $term = term_exists( $term_name, 'Editorials' ); // check if term already exists
-      if ( 0 !== $term && null !== $term ) {
-        // If the term exists, update it
-        $term_data = wp_update_term( $term['term_id'], 'editorials', [
-            'name' => $term_name,
-            'slug' => $term_slug,
-            'description' => $term_description,
-        ]);
-    } else {
-        // Otherwise, insert a new term
-        $term_data = wp_insert_term(
+	public function updateGeslibLines( $geslib_id, $type, $content){
+		global $wpdb;
+		//var_dump($content);
+		$wpdb->update(
+			$wpdb->prefix.self::GESLIB_LINES_TABLE,
+			['content' => $content],
+			[
+				'geslib_id' => $geslib_id,
+				'entity' => $type
+			],
+			'%s',
+			['%d','%s']
+		);
+	}
+
+	public function insertGeslibLines( $geslib_id, $log_id, $content ){
+		global $wpdb;
+		$wpdb->insert(
+			$wpdb->prefix.self::GESLIB_LINES_TABLE,
+			[
+				'geslib_id' => $geslib_id,
+				'content' => $content
+			],
+		);
+	}
+
+	public function insertProductData($content_array, $action, $log_id) {
+		
+		global $wpdb;
+		$wpdb->insert(
+			$wpdb->prefix.self::GESLIB_LINES_TABLE,
+			[
+				'log_id' => $log_id,
+				'geslib_id' => $content_array['geslib_id'],
+				'action' => $action,
+				'entity' => 'product',
+				'content' => json_encode($content_array),
+				'queued' => 1
+			],
+		);
+	}
+
+	public function getLogId($filename){
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LOG_TABLE;
+		$query = $wpdb->prepare("SELECT 
+									id 
+								FROM $table 
+								WHERE filename='%s'", 
+								$filename);
+		return $wpdb->get_var($query);
+
+	}
+	
+	private function _storeData( $type, $geslib_id, $content ) {
+		$store_data=[];
+		$function_name = 'store'.$type[0];
+		if (method_exists($this, $function_name)) {
+			$store_data[] = $this->{$function_name}($geslib_id,$content);
+		} else {
+			$store_data[] = 'EMPTY';
+		}
+      
+      	return $store_data;
+    }
+
+    public function storepublisher( $geslib_id, $content ) {
+		$content = json_decode( $content );
+		$term_name = $content['publisher'];
+		$term_slug = $this->_create_slug( $term_name );
+		$term_description = $term_name;
+		$term = term_exists( $term_name, 'Editorials' ); // check if term already exists
+		if ( 0 !== $term && null !== $term ) {
+			// If the term exists, update it
+			$term_data = wp_update_term( $term['term_id'], 'editorials', [
+				'name' => $term_name,
+				'slug' => $term_slug,
+				'description' => $term_description,
+			]);
+    	} else {
+        	// Otherwise, insert a new term
+        	$term_data = wp_insert_term(
             $term_name,   // the term 
             'editorials', // the taxonomy
             [
                 'description'=> $term_description,
                 'slug' => $term_slug,
             ]);
-    }
+    	}
 
         // Check for errors
         if ( is_wp_error($term_data) ) {
@@ -198,57 +252,5 @@ class GeslibApiDbManager {
 		return $wpdb->get_var( $query );
 	}
 
-	public function updateGeslibLines( $geslib_id, $type, $content){
-		global $wpdb;
-		//var_dump($content);
-		$wpdb->update(
-			$wpdb->prefix.self::GESLIB_LINES_TABLE,
-			['content' => $content],
-			[
-				'geslib_id' => $geslib_id,
-				'type' => $type
-			],
-			'%s',
-			'%d'
-		);
-	}
-
-	public function insertGeslibLines( $geslib_id, $log_id, $content ){
-		global $wpdb;
-		$wpdb->insert(
-			$wpdb->prefix.self::GESLIB_LINES_TABLE,
-			[
-				'geslib_id' => $geslib_id,
-				'content' => $content
-			],
-		);
-	}
-
-	public function insertProductData($content_array, $log_id) {
-		
-		global $wpdb;
-		$wpdb->insert(
-			$wpdb->prefix.self::GESLIB_LINES_TABLE,
-			[
-				'log_id' => $log_id,
-				'geslib_id' => $content_array['geslib_id'],
-				'action' => 'insert',
-				'entity' => 'product',
-				'content' => json_encode($content_array),
-				'queued' => 1
-			],
-		);
-	}
-
-	public function getLogId($filename){
-		global $wpdb;
-		$table = $wpdb->prefix.self::GESLIB_LOG_TABLE;
-		$query = $wpdb->prepare("SELECT 
-									id 
-								FROM $table 
-								WHERE filename='%s'", 
-								$filename);
-		return $wpdb->get_var($query);
-
-	}
+	
 }

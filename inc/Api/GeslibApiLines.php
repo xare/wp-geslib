@@ -156,7 +156,7 @@ class GeslibApiLines {
 	private function processGP4($data, $log_id) {
 		// GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
 		if(count($data) !== count(self::$productKeys)) {
-			return ;
+			return;
 		} else {
 			if( $data[1] === 'A' ) {
 				$content_array = array_combine( self::$productKeys, $data );
@@ -193,6 +193,25 @@ class GeslibApiLines {
 			// Delete
 
 		}
+	}
+
+	private function process3( $data, $log_id ) {
+		//
+		//3|A|01|Cartes|||
+		if( in_array( $data[1],['A','M'] ) ) {
+			//insert or update
+			$this->insert2GeslibLines($data[2], $log_id, 'category', $data[1], $data[3]);
+		} else if ( $data[1] == 'B' ) {
+			//delete
+		}
+	}
+
+	private function process5( $data, $log_id ) {
+		//Add a category to to a 
+		//5|17|1|
+		$geslib_id = $data[2];
+		$content_array['categories'][]['category_id'] = $data[1];
+		$this->mergeContent($geslib_id, $content_array, 'product');
 	}
 	private function processAUT( $data, $log_id ) {
 		// Procesa las líneas AUT aquí

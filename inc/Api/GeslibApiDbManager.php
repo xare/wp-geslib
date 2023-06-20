@@ -38,7 +38,16 @@ class GeslibApiDbManager {
 						$insertArray,
 						['%s', '%s', '%s', '%d', '%s']);
 	}
-	
+
+	/** 
+	 * Count the number of rows in the geslib_row and geslib_lines tables
+	 */
+
+	public function countRows($table){
+		global $wpdb;
+		$table = $wpdb->prefix.'geslib_'.$table;
+		return $wpdb->get_var( "SELECT COUNT(id) FROM $table" );
+	}
 	/**
      * Check if the filename exists in the wpgeslib_log table.
      *

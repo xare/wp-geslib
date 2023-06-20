@@ -2,10 +2,12 @@
 
 namespace Inc\Geslib;
 use Inc\Geslib\Commands\GeslibHelloCommand;
+use Inc\Geslib\Commands\GeslibShowTablesCommand;
 use Inc\Geslib\Commands\GeslibLogCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllProductsCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllTermsCommand;
 use Inc\Geslib\Commands\GeslibLinesCommand;
+use Inc\Geslib\Commands\GeslibTruncateTableCommand;
 
 final class Init
 {
@@ -17,6 +19,8 @@ final class Init
   public static function get_services():Array {
     return [
       GeslibHelloCommand::class,
+      GeslibShowTablesCommand::class,
+      GeslibTruncateTableCommand::class,
       GeslibLogCommand::class,
       GeslibLinesCommand::class,
 	    GeslibDeleteAllProductsCommand::class,

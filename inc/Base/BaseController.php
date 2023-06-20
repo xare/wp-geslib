@@ -3,7 +3,7 @@
  * @package starterkit
  */
 
- namespace Inc\Starterkit\Base;
+ namespace Inc\Geslib\Base;
 
  class BaseController
  {

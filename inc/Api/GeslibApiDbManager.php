@@ -261,6 +261,18 @@ class GeslibApiDbManager {
 		return $wpdb->get_var( $query );
 	}
 
-	
+	// FROM HERE WE PRESENT FUNCTIONS THAT WILL STORE GESLIB LINES ROWS TO WORDPRESS
+
+	public function getProductCategoriesFromGeslibLines() {
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$query = $wpdb->prepare ("SELECT * FROM {$table} WHERE entity=%s",'category');
+		return $wpdb->get_results($query);
+	}
+
+	public function storeProductCategories($product_category) {
+		var_dump($product_category);
+
+	}
 	
 }

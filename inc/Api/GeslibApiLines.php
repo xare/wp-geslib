@@ -197,7 +197,7 @@ class GeslibApiLines {
 	}
 
 	private function process3( $data, $log_id ) {
-		//
+		//Add categories
 		//3|A|01|Cartes|||
 		if( in_array( $data[1],['A','M'] ) ) {
 			//insert or update

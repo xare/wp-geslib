@@ -1,12 +1,16 @@
 <?php
 
 namespace Inc\Geslib;
+
+use Inc\Geslib\Base\GeslibProductCatController;
+use Inc\Geslib\Commands\GeslibStoreProductCategoriesCommand;
 use Inc\Geslib\Commands\GeslibHelloCommand;
 use Inc\Geslib\Commands\GeslibShowTablesCommand;
 use Inc\Geslib\Commands\GeslibLogCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllProductsCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllTermsCommand;
 use Inc\Geslib\Commands\GeslibLinesCommand;
+use Inc\Geslib\Commands\GeslibStoreDataCommand;
 use Inc\Geslib\Commands\GeslibTruncateTableCommand;
 
 final class Init
@@ -24,7 +28,9 @@ final class Init
       GeslibLogCommand::class,
       GeslibLinesCommand::class,
 	    GeslibDeleteAllProductsCommand::class,
-	    GeslibDeleteAllTermsCommand::class
+	    GeslibDeleteAllTermsCommand::class,
+      GeslibStoreProductCategoriesCommand::class,
+      GeslibProductCatController::class
     ];
   }
 

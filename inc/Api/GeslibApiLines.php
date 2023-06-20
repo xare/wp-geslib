@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Api;
 
 use Inc\Geslib\Api\GeslibApiWpManager;
+use WP_CLI;
 
 class GeslibApiLines {
 	static $productKeys = [
@@ -138,7 +139,7 @@ class GeslibApiLines {
 		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 		$i = 0;
 		foreach ($lines as $line) {
-			if ( $i > 1000) return false;
+			if ( $i > 3000) return false;
 			$data = explode( '|', $line ) ;
 			array_pop($data);
 			if(in_array($data[0], self::$lineTypes)) {
@@ -210,8 +211,14 @@ class GeslibApiLines {
 		//Add a category to to a 
 		//5|17|1|
 		$geslib_id = $data[2];
-		$content_array['categories'][]['category_id'] = $data[1];
-		$this->mergeContent($geslib_id, $content_array, 'product');
+		if($data[1] !== '0') {
+			if( isset( $content_array['categories'] ) )
+				array_push( $content_array['categories'], [ $data[1] => $data[2] ] );
+			else 
+				$content_array['categories'][$data[1]]['geslib_id'] = $data[2];
+				
+			$this->mergeContent($geslib_id, $content_array, 'product');
+		}
 	}
 	private function processAUT( $data, $log_id ) {
 		// Procesa las líneas AUT aquí
@@ -235,8 +242,7 @@ class GeslibApiLines {
 	}
 
 	private function mergeContent( $geslib_id, $content_array, $type ) {
-		var_dump($geslib_id);
-		var_dump($type);
+		
 		//this function is called when the product has been created but we need to add more data to its content json string
 		
 		//1. Get the content given the $geslib_id
@@ -244,7 +250,12 @@ class GeslibApiLines {
 		
 		if( $result ){
 			$existing_content = json_decode( $result, true);
-			$content_array = array_merge( $existing_content, $content_array );
+			if(isset($existing_content['categories']) && count($content_array['categories']) > 0) {	
+				array_push( $existing_content['categories'], $content_array['categories'] );
+				$content_array = $existing_content;
+			} else {
+				$content_array = array_merge( $existing_content, $content_array );
+			}
 		}
 		$content = json_encode($content_array);
 		if ( $result ) {

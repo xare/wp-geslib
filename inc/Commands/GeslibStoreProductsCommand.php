@@ -5,11 +5,20 @@
 
 namespace Inc\Geslib\Commands;
 
-use Inc\Geslib\Api\Encoding;
-use WC_Product_Simple;
-use WP_CLI_Command;
+use Inc\Geslib\Api\GeslibApiDbManager;
+use WP_CLI;
 
-class GeslibStoreDataCommand extends WP_CLI_Command { 
+class GeslibStoreProductsCommand { 
+  private $db;
+  public function __construct() {
+    $this->db = new GeslibApiDbManager();
+  }
+
+  public function register() {
+    if ( class_exists( 'WP_CLI' ) ) {
+        WP_CLI::add_command( 'geslib storeProducts', [$this, 'execute'] );
+    }
+  }
   /**
     * Say hello
     *
@@ -24,15 +33,12 @@ class GeslibStoreDataCommand extends WP_CLI_Command {
     *
     * @when after_wp_load
     */
-    public function __invoke( $args, $assoc_args ) {
-      //1. Read geslib_logs table
-      $this->_readGeslibLinesTable();
-      //2. open the file
-      //3. send the contents to the geslib_lines
-      return "geslibLines";
+    public function execute( $args, $assoc_args ) {
+      $this->db->storeProducts();
+      WP_CLI::line("Store products");
     }
 
-    public function _readGeslibLinesTable(){
+    /* public function _readGeslibLinesTable(){
       global $wpdb;
       $table_name = $wpdb->prefix . 'geslib_lines';
       $query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
@@ -41,9 +47,9 @@ class GeslibStoreDataCommand extends WP_CLI_Command {
       foreach ($results as $result) {
         $this->_storeData($result->type, $result->id, $result->content);
       }
-    }
+    } */
 
     
 }
 
-\WP_CLI::add_command( 'geslib storedata', 'Inc\Geslib\Commands\GeslibStoreDataCommand' );
+/* \WP_CLI::add_command( 'geslib storedata', 'Inc\Geslib\Commands\GeslibStoreDataCommand' ); */

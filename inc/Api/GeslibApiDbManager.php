@@ -2,7 +2,9 @@
 
 namespace Inc\Geslib\Api;
 
-use Inc\Geslib\Api\GeslibApiLog;
+use Inc\Geslib\Api\GeslibApiSanitize;
+use WC_Product_Simple;
+use WP_Query;
 
 class GeslibApiDbManager {
 	const GESLIB_LINES_TABLE = 'geslib_lines';
@@ -23,6 +25,12 @@ class GeslibApiDbManager {
 		'lines_count', // int number of lines 
 		'status', // string waiting | enqueued | processed
 	];
+
+	private $geslibApiSanitize;
+
+	public function __construct() {
+		$this->geslibApiSanitize = new GeslibApiSanitize();
+	}
 	
 	public function insertLogData( $filename, $status, $linesCount  ) {
 		global $wpdb;
@@ -197,13 +205,44 @@ class GeslibApiDbManager {
             echo $term_data->get_error_message();
         }
     }
-    public function storeproduct($geslib_id,$content){
+
+	public function storeProducts() {
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+
+		$query = $wpdb->prepare("SELECT * FROM {$table} WHERE action=%s and entity=%s",['A','product']);
+		$product_geslib_lines = $wpdb->get_results($query);
+		foreach($product_geslib_lines as $product_geslib_line) {
+			$this->storeProduct($product_geslib_line->geslib_id, $product_geslib_line->content);
+		}
+	}
+
+    public function storeProduct($geslib_id, $content){
 		// Check if product already exists
-		$content = json_decode($content);
-		$book_name = $content['titulo'];
-		$book_description = $content['sinopsis'];
+		$content = json_decode($content, true);
+		$book_name = $content['description'];
+		var_dump($content);
+		if ( isset( $content['sinopsis'] ) )
+			$book_description = $content['sinopsis'];
 		$book_price = floatval(str_replace(',', '.', $content['pvp']));
-		$existing_product = get_page_by_title($book_name, OBJECT, 'product');
+		$existing_product = null;
+		$args = array(
+			'post_type'      => 'product',
+			'posts_per_page' => 1,
+			'post_status'    => 'publish',
+			'title'          => $book_name
+		);
+		
+		$products = new WP_Query($args);
+		
+		if($products->have_posts()) {
+			while ($products->have_posts()) {
+				$products->the_post();
+				$existing_product = $products->post;
+			}
+			wp_reset_postdata();
+		}
+		
 		if ($existing_product) {
 			// If product exists, get an instance of WC_Product for the existing product
 			$product = wc_get_product($existing_product->ID);
@@ -271,8 +310,79 @@ class GeslibApiDbManager {
 	}
 
 	public function storeProductCategories($product_category) {
-		var_dump($product_category);
+		// Make sure the category doesn't already exist
+		if( !term_exists( $this->geslibApiSanitize->utf8_encode( $product_category->content ), 'product_cat' )) {
+			// Create the category
+			$result = wp_insert_term(
+				$this->geslibApiSanitize->utf8_encode( $product_category->content ), // the term 
+				'product_cat', // the taxonomy
+				[
+					'description' => 'Imported category', 
+					'slug'        => sanitize_title($product_category->content)
+					// you can add other properties here as per your needs
+				]
+			);
+			add_term_meta($result['term_id'],'category_geslib_id', $product_category->geslib_id);
+			$category_geslib_id = get_term_meta( $result['term_id'], 'category_geslib_id', true );
 
+			// Check for errors
+			if (is_wp_error($result)) {
+				// Handle error here
+				echo $result->get_error_message();
+				return null;
+			}
+	
+			// Return the created category
+			return get_term($result['term_id'], 'product_cat');
+		} else {
+			echo "Category already exists";
+			return null;
+		}
 	}
+
+	public function reorganizeProductCategories() {
+		$terms = get_terms([
+			'taxonomy' => 'product_cat',
+			'hide_empty' => false,
+		]);
+
+		foreach ($terms as $term) {
+		
+			// Get the custom field value
+			$category_geslib_id = get_term_meta($term->term_id, 'category_geslib_id', true);
+		
+			// Extract the parent category's geslib_id
+			$parent_category_geslib_id = substr($category_geslib_id, 0, -2);
+			// Find the parent term based on category_geslib_id
+			if ( $parent_category_geslib_id != '' ) {
+				$args = [
+							'taxonomy' => 'product_cat',
+							'hide_empty' => false,
+							'meta_query' => [
+												[
+													'key' => 'category_geslib_id',
+													'value' => $parent_category_geslib_id,
+													'compare' => '='
+												]
+							]
+						];
+				$parent_terms = get_terms($args);
+
+				if (!empty($parent_terms) && !is_wp_error($parent_terms)) {
+					foreach($parent_terms as $parent_term) {
+						if ( $parent_term != '' ) {
+							// Update the term's parent with the parent term
+							wp_update_term( $term->term_id, 'product_cat', [ 'parent' => $parent_term->term_id ] );
+						}
+					}
+				} else {
+					// No terms found or there was an error
+				}
+			}
+		}
+	}
+
+	
+	
 	
 }

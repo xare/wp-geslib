@@ -139,7 +139,7 @@ class GeslibApiLines {
 		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 		$i = 0;
 		foreach ($lines as $line) {
-			if ( $i > 3000) return false;
+			//if ( $i > 4000) return false;
 			$data = explode( '|', $line ) ;
 			array_pop($data);
 			if(in_array($data[0], self::$lineTypes)) {

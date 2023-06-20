@@ -34,6 +34,8 @@ class GeslibStoreProductCategoriesCommand {
      */
     public function execute() {
         $this->geslibApiStoreData->storeProductCategories();
+        $this->db->reorganizeProductCategories();
+        
         WP_CLI::line( 'Geslib lines categories have been transfered.');
     }
 

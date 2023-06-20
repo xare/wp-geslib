@@ -9,7 +9,9 @@ use Inc\Geslib\Commands\GeslibShowTablesCommand;
 use Inc\Geslib\Commands\GeslibLogCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllProductsCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllTermsCommand;
+use Inc\Geslib\Commands\GeslibDeleteProductCategoriesCommand;
 use Inc\Geslib\Commands\GeslibLinesCommand;
+use Inc\Geslib\Commands\GeslibStoreProductsCommand;
 use Inc\Geslib\Commands\GeslibStoreDataCommand;
 use Inc\Geslib\Commands\GeslibTruncateTableCommand;
 
@@ -22,6 +24,7 @@ final class Init
    */
   public static function get_services():Array {
     return [
+      GeslibDeleteProductCategoriesCommand::class,
       GeslibHelloCommand::class,
       GeslibShowTablesCommand::class,
       GeslibTruncateTableCommand::class,
@@ -30,6 +33,7 @@ final class Init
 	    GeslibDeleteAllProductsCommand::class,
 	    GeslibDeleteAllTermsCommand::class,
       GeslibStoreProductCategoriesCommand::class,
+      GeslibStoreProductsCommand::class,
       GeslibProductCatController::class
     ];
   }

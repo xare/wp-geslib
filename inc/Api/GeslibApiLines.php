@@ -216,7 +216,7 @@ class GeslibApiLines {
 				array_push( $content_array['categories'], [ $data[1] => $data[2] ] );
 			else 
 				$content_array['categories'][$data[1]]['geslib_id'] = $data[2];
-				
+			
 			$this->mergeContent($geslib_id, $content_array, 'product');
 		}
 	}

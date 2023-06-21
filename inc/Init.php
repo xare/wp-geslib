@@ -2,6 +2,7 @@
 
 namespace Inc\Geslib;
 
+use Inc\Geslib\Base\GeslibEditorialController;
 use Inc\Geslib\Base\GeslibProductCatController;
 use Inc\Geslib\Commands\GeslibStoreProductCategoriesCommand;
 use Inc\Geslib\Commands\GeslibStoreEditorialsCommand;
@@ -11,6 +12,7 @@ use Inc\Geslib\Commands\GeslibLogCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllProductsCommand;
 use Inc\Geslib\Commands\GeslibDeleteAllTermsCommand;
 use Inc\Geslib\Commands\GeslibDeleteProductCategoriesCommand;
+use Inc\Geslib\Commands\GeslibDeleteEditorialsCommand;
 use Inc\Geslib\Commands\GeslibLinesCommand;
 use Inc\Geslib\Commands\GeslibStoreProductsCommand;
 use Inc\Geslib\Commands\GeslibStoreDataCommand;
@@ -26,6 +28,7 @@ final class Init
   public static function get_services():Array {
     return [
       GeslibDeleteProductCategoriesCommand::class,
+      GeslibDeleteEditorialsCommand::class,
       GeslibStoreEditorialsCommand::class,
       GeslibHelloCommand::class,
       GeslibShowTablesCommand::class,
@@ -36,7 +39,8 @@ final class Init
 	    GeslibDeleteAllTermsCommand::class,
       GeslibStoreProductCategoriesCommand::class,
       GeslibStoreProductsCommand::class,
-      GeslibProductCatController::class
+      GeslibProductCatController::class,
+      GeslibEditorialController::class
     ];
   }
 

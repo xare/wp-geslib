@@ -201,11 +201,15 @@ class GeslibApiDbManager {
 							]);
     	}
 
+		add_term_meta($term_data['term_id'],'editorial_geslib_id', $editorial->geslib_id);
+		$editorial_geslib_id = get_term_meta( $term_data['term_id'], 'editorial_geslib_id', true );
+
         // Check for errors
         if ( is_wp_error($term_data) ) {
             // Handle the error here
             echo $term_data->get_error_message();
         }
+		return get_term($term_data['term_id'], 'editorials');
     }
 
 	public function storeProducts() {
@@ -222,6 +226,7 @@ class GeslibApiDbManager {
     public function storeProduct($geslib_id, $content){
 		// Check if product already exists
 		$content = json_decode($content, true);
+		$editorial_geslib_id = $content['editorial'];
 		$book_name = $content['description'];
 		var_dump($content);
 		if ( isset( $content['sinopsis'] ) )
@@ -255,6 +260,7 @@ class GeslibApiDbManager {
 		}
 
 		// Set or update product data
+		
 		$product->set_description($book_description);
 		$product->set_status("publish");  // can also be 'draft' or 'pending'
 		$product->set_catalog_visibility('visible');  // or 'hidden'
@@ -265,9 +271,55 @@ class GeslibApiDbManager {
 		// Save the product to the database and get its ID
 		$product_id = $product->save();
 
-		// Assign the product to the editorial taxonomy term
-		//wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
+		// Get the integer value from the content array
+		$editorial_id = intval($content['editorial']); 
 
+		// Get terms
+		$args = array(
+			'taxonomy' => 'editorials', // the taxonomy for the term
+			'hide_empty' => false, // also retrieve terms which are not used yet
+			'meta_query' => [
+					['key'       => 'editorial_geslib_id', // your meta key
+					'value'     => $editorial_id, // your meta value
+					'compare'   => '='],
+				],
+			);
+
+		$terms = get_terms($args);
+		// Check if any term found
+		if (!empty($terms) && !is_wp_error($terms)) {
+    		// Terms found, get the first term
+    		$editorial_term = $terms[0]->term_id;
+			// Assign the product to the editorial taxonomy term
+			wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
+		}
+
+		// APPEND CATEGORIES
+
+		if( $content['categories'] != null && count( $content['categories']) > 0 ) {
+			foreach ( $content['categories'] as $key => $value ) {
+				$category_id = intval($key);
+				// Get terms
+				$cat_args = [
+					'taxonomy' => 'product_cat', // the taxonomy for the term
+					'hide_empty' => false, // also retrieve terms which are not used yet
+					'meta_query' => [
+							['key'       => 'category_geslib_id', // your meta key
+							'value'     => $category_id, // your meta value
+							'compare'   => '='],
+						],
+					];
+
+					$categories = get_terms($cat_args);
+					// Check if any term found
+					if (!empty($categories) && !is_wp_error($categories)) {
+						// Terms found, get the first term
+						$category_term = $categories[0]->term_id;
+						// Assign the product to the editorial taxonomy term
+						wp_set_object_terms($product_id, $category_term, 'product_cat', true);
+					}
+			}
+		}
 		return $product_id;
     }
     public function storecategory($geslib_id,$content){}

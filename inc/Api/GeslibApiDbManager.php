@@ -175,12 +175,14 @@ class GeslibApiDbManager {
       	return $store_data;
     }
 
-    public function storepublisher( $geslib_id, $content ) {
-		$content = json_decode( $content );
-		$term_name = $content['publisher'];
+    public function storeEditorials( $editorial ) {
+		//$content = json_decode( $editorial->content, true );
+		//$content = json_decode( $editorial->content, true );
+		//$term_name = $content['editorial'];
+		$term_name = $editorial->content;
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
-		$term = term_exists( $term_name, 'Editorials' ); // check if term already exists
+		$term = term_exists( $term_name, 'editorials' ); // check if term already exists
 		if ( 0 !== $term && null !== $term ) {
 			// If the term exists, update it
 			$term_data = wp_update_term( $term['term_id'], 'editorials', [
@@ -191,12 +193,12 @@ class GeslibApiDbManager {
     	} else {
         	// Otherwise, insert a new term
         	$term_data = wp_insert_term(
-            $term_name,   // the term 
-            'editorials', // the taxonomy
-            [
-                'description'=> $term_description,
-                'slug' => $term_slug,
-            ]);
+							$term_name,   // the term 
+							'editorials', // the taxonomy
+							[
+								'description'=> $term_description,
+								'slug' => $term_slug,
+							]);
     	}
 
         // Check for errors
@@ -301,6 +303,13 @@ class GeslibApiDbManager {
 	}
 
 	// FROM HERE WE PRESENT FUNCTIONS THAT WILL STORE GESLIB LINES ROWS TO WORDPRESS
+
+	public function getEditorialsFromGeslibLines() {
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$query = $wpdb->prepare( "SELECT * FROM {$table} WHERE entity=%s",'editorial');
+		return $wpdb->get_results($query);
+	}
 
 	public function getProductCategoriesFromGeslibLines() {
 		global $wpdb;

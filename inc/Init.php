@@ -4,6 +4,7 @@ namespace Inc\Geslib;
 
 use Inc\Geslib\Base\GeslibProductCatController;
 use Inc\Geslib\Commands\GeslibStoreProductCategoriesCommand;
+use Inc\Geslib\Commands\GeslibStoreEditorialsCommand;
 use Inc\Geslib\Commands\GeslibHelloCommand;
 use Inc\Geslib\Commands\GeslibShowTablesCommand;
 use Inc\Geslib\Commands\GeslibLogCommand;
@@ -25,6 +26,7 @@ final class Init
   public static function get_services():Array {
     return [
       GeslibDeleteProductCategoriesCommand::class,
+      GeslibStoreEditorialsCommand::class,
       GeslibHelloCommand::class,
       GeslibShowTablesCommand::class,
       GeslibTruncateTableCommand::class,

@@ -15,4 +15,13 @@ class GeslibApiStoreData {
             $this->db->storeProductCategories($product_category);
         }
     }
+
+    public function storeEditorials() {
+        $editorials = $this->db->getEditorialsFromGeslibLines();
+        foreach($editorials as $editorial) {
+            $this->db->storeEditorials($editorial);
+        }
+    }
+
+
 }

@@ -305,14 +305,18 @@ class GeslibApiDbManager {
 	public function getProductCategoriesFromGeslibLines() {
 		global $wpdb;
 		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
-		$query = $wpdb->prepare ("SELECT * FROM {$table} WHERE entity=%s",'category');
+		$query = $wpdb->prepare ("SELECT * FROM {$table} WHERE entity=%s",'product_cat');
+		var_dump($wpdb->get_results($query));
 		return $wpdb->get_results($query);
 	}
 
 	public function storeProductCategories($product_category) {
+		var_dump($product_category->geslib_id);
+	
 		// Make sure the category doesn't already exist
 		if( !term_exists( $this->geslibApiSanitize->utf8_encode( $product_category->content ), 'product_cat' )) {
 			// Create the category
+			// TODO: No asume bien contenidos con acentos y signos raros.
 			$result = wp_insert_term(
 				$this->geslibApiSanitize->utf8_encode( $product_category->content ), // the term 
 				'product_cat', // the taxonomy

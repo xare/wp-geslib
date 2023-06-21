@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Commands;
 
 use WP_CLI;
+use WP_Query;
 
 /**
  * Class for a custom WP-CLI command to delete all WooCommerce products.

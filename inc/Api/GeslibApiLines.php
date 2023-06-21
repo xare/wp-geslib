@@ -201,7 +201,13 @@ class GeslibApiLines {
 		//3|A|01|Cartes|||
 		if( in_array( $data[1],['A','M'] ) ) {
 			//insert or update
-			$this->insert2GeslibLines($data[2], $log_id, 'category', $data[1], $data[3]);
+
+			$this->insert2GeslibLines( 
+								$data[2], 
+								$log_id, 
+								'product_cat', 
+								$data[1], 
+								$this->geslibApiSanitize->utf8_encode($data[3]));
 		} else if ( $data[1] == 'B' ) {
 			//delete
 		}

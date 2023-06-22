@@ -4,6 +4,7 @@ namespace Inc\Geslib;
 
 use Inc\Geslib\Base\GeslibEditorialController;
 use Inc\Geslib\Base\GeslibProductCatController;
+use Inc\Geslib\Base\GeslibProductController;
 use Inc\Geslib\Commands\GeslibStoreProductCategoriesCommand;
 use Inc\Geslib\Commands\GeslibStoreEditorialsCommand;
 use Inc\Geslib\Commands\GeslibHelloCommand;
@@ -40,6 +41,7 @@ final class Init
       GeslibStoreProductCategoriesCommand::class,
       GeslibStoreProductsCommand::class,
       GeslibProductCatController::class,
+      GeslibProductController::class,
       GeslibEditorialController::class
     ];
   }

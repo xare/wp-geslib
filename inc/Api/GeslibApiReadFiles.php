@@ -10,10 +10,12 @@ use ZipArchive;
 class GeslibApiReadFiles {
 	private $mainFolderPath;
     private $histoFolderPath;
+	private $geslibSettings;
     private $db;
 
     public function __construct() {
-        $this->mainFolderPath = WP_CONTENT_DIR . '/uploads/geslib/';
+		$this->geslibSettings = get_option('geslib_settings');
+        $this->mainFolderPath = WP_CONTENT_DIR . '/uploads/geslib/'.$this->geslibSettings['geslib_folder_index'];
         $this->histoFolderPath = $this->mainFolderPath . 'HISTO/';
         $this->db = new GeslibApiDbManager();
     }

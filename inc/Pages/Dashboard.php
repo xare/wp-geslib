@@ -5,18 +5,16 @@ namespace Inc\Geslib\Pages;
 use Inc\Geslib\Api\SettingsApi;
 use Inc\Geslib\Base\BaseController;
 use Inc\Geslib\Api\Callbacks\AdminCallbacks;
-use Inc\Geslib\Api\Callbacks\ManagerCallbacks;
 
 class Dashboard extends BaseController {
     public $settings;
     public $pages = [];
     public $callbacks;
-    public $callbacks_mngr;
+
 
     public function register() {
         $this->settings = new SettingsApi();
         $this->callbacks = new AdminCallbacks();
-        $this->callbacks_mngr = new ManagerCallbacks();
         $this->setPages();
         $this->setSettings();
 		$this->setSections();
@@ -54,12 +52,20 @@ class Dashboard extends BaseController {
 		$args = [
 			[
 				'option_group'=> 'geslib_settings',
-				'option_name' => 'geslib',
-				'callback' => [$this->callbacks_mngr, 'textSanitize']
+				'option_name' => 'geslib_settings',
+				'callback' => [$this->callbacks, 'textSanitize']
             ]
 		];
 
 		$this->settings->setSettings( $args );
+
+		// Save the default option if it doesn't exist
+		if ( !get_option('geslib_settings') ) {
+			$default_settings = [
+				'geslib_folder_index' => ''
+			];
+			update_option('geslib_settings', $default_settings);
+		}
 	}
 
     public function setSections()
@@ -68,7 +74,7 @@ class Dashboard extends BaseController {
 			[
 				'id'=> 'geslib_admin_index',
 				'title' => 'Settings Manager',
-				'callback' => [$this->callbacks_mngr , 'adminSectionManager'],
+				'callback' => [$this->callbacks , 'adminSectionManager'],
 				'page' => 'geslib' //From menu_slug
 				]
 		];
@@ -77,22 +83,20 @@ class Dashboard extends BaseController {
 
     public function setFields()
 	{
-		/* foreach($this->managers as $key => $value) { */
 		$args = [
                     [
 						'id'=> 'geslib_folder_index',
 						'title' => 'Geslib folder Name',
-						'callback' => [$this->callbacks_mngr, 'textField'],
+						'callback' => [$this->callbacks, 'textField'],
 						'page' => 'geslib', //From menu_slug
 						'section' => 'geslib_admin_index',
 						'args' => [
-								'option_name' => 'geslib',
+								'option_name' => 'geslib_settings',
 								'label_for' => 'geslib_folder_index',
 								'class' => 'regular-text'
 							]
 		            ]
                 ];
-		/* } */
 		$this->settings->setFields( $args );
 	}
 }

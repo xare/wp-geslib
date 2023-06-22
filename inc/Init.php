@@ -18,6 +18,7 @@ use Inc\Geslib\Commands\GeslibLinesCommand;
 use Inc\Geslib\Commands\GeslibStoreProductsCommand;
 use Inc\Geslib\Commands\GeslibStoreDataCommand;
 use Inc\Geslib\Commands\GeslibTruncateTableCommand;
+use Inc\Geslib\Pages\Dashboard;
 
 final class Init
 {
@@ -42,7 +43,8 @@ final class Init
       GeslibStoreProductsCommand::class,
       GeslibProductCatController::class,
       GeslibProductController::class,
-      GeslibEditorialController::class
+      GeslibEditorialController::class,
+      Dashboard::class
     ];
   }
 

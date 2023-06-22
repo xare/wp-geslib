@@ -13,8 +13,8 @@ namespace Inc\Geslib\Base;
 
     $default = [];
 
-    if ( !get_option('geslib')) {
-      update_option('geslib', $default);
+    if ( !get_option('geslib_settings')) {
+      update_option('geslib_settings', $default);
     }
 
     /* CREATE A DATABASE TABLE CALLED geslib_log */

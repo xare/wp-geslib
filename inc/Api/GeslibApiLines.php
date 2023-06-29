@@ -125,7 +125,7 @@ class GeslibApiLines {
 
 	public function __construct() {
 		$this->geslibSettings = get_option('geslib_settings');
-		$this->mainFolderPath = WP_CONTENT_DIR . '/uploads/'.$this->geslibSettings['geslib_folder_index'];
+		$this->mainFolderPath = WP_CONTENT_DIR . "/uploads/".$this->geslibSettings['geslib_folder_index']."/";
 		$this->db = new GeslibApiDbManager();
 		$this->geslibApiSanitize = new GeslibApiSanitize();
 	}

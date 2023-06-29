@@ -15,7 +15,7 @@ class GeslibApiReadFiles {
 
     public function __construct() {
 		$this->geslibSettings = get_option('geslib_settings');
-        $this->mainFolderPath = WP_CONTENT_DIR . '/uploads/geslib/'.$this->geslibSettings['geslib_folder_index'];
+        $this->mainFolderPath = WP_CONTENT_DIR . '/uploads/' . $this->geslibSettings['geslib_folder_index'].'/';
         $this->histoFolderPath = $this->mainFolderPath . 'HISTO/';
         $this->db = new GeslibApiDbManager();
     }

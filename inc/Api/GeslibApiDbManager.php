@@ -227,6 +227,8 @@ class GeslibApiDbManager {
 		// Check if product already exists
 		$content = json_decode($content, true);
 		$ean = $content['ean'];
+		$author = $content['author'];
+		$num_paginas = $content['num_paginas'];
 		$editorial_geslib_id = $content['editorial'];
 		$book_name = $content['description'];
 		var_dump($content);
@@ -273,6 +275,10 @@ class GeslibApiDbManager {
 		$product_id = $product->save();
 		if(isset($ean))
 			update_post_meta($product_id, '_ean', $ean);
+		if(isset($author))
+			update_post_meta($product_id, '_author', $author);
+		if(isset($ean))
+			update_post_meta($product_id, '_num_paginas', $num_paginas);
 
 		// Get the integer value from the content array
 		$editorial_id = intval($content['editorial']); 

@@ -1,0 +1,11 @@
+@import 'modules/table';
+@import 'modules/pagination';
+@import 'modules/terminal';
+ul {
+    list-style: none;
+}
+
+.button {
+    margin-inline-end: 1rem !important;
+    margin-block-end: 1rem !important;
+}

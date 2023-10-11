@@ -1,11 +1,13 @@
 <?php
 
 /**
- * @package starterkit
+ * @package geslib
  */
 
- namespace Inc\Starterkit\Base;
-use Inc\Starterkit\Base\BaseController;
+namespace Inc\Geslib\Base;
+
+use Inc\Geslib\Base\BaseController;
+
 class Enqueue extends BaseController {
   public function register(){
     add_action ( 'admin_enqueue_scripts', [$this, 'enqueue_admin']);
@@ -16,12 +18,14 @@ function enqueue() {
 
         wp_enqueue_script('media_upload');
         wp_enqueue_media();
-        wp_enqueue_style('StarterKitStyle', $this->plugin_url . 'dist/css/starterkit.css');
-        wp_enqueue_script('StarterKitScript', $this->plugin_url . 'dist/js/starterkit.js');
+        wp_enqueue_style('GeslibStyle', $this->plugin_url . 'dist/css/geslib.min.css');
+        wp_enqueue_script('GeslibScript', $this->plugin_url . 'dist/js/geslib.min.js');
+        
       }
   function enqueue_admin() {
         // enqueue all our scripts
-        wp_enqueue_style('StarterKitAdminStyle', $this->plugin_url .'dist/css/starterkit.min.css');
-        wp_enqueue_script('StarterKitAdminScript', $this->plugin_url .'dist/js/starterkit.min.js');
+        wp_enqueue_style('GeslibAdminStyle', $this->plugin_url .'dist/css/geslibAdmin.min.css');
+        wp_enqueue_script('GeslibAdminScript', $this->plugin_url .'dist/js/geslibAdmin.min.js');
+        wp_enqueue_script('GeslibPagination', $this->plugin_url .'dist/js/pagination.min.js',['jquery'], '1.0', true);
       }
 }

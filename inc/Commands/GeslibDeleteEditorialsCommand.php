@@ -14,7 +14,7 @@ class GeslibDeleteEditorialsCommand {
         }
     }
     /**
-     * Prints a hello world message
+     * Deletes al terms associated with Editorials custom taxonomy
      *
      * ## OPTIONS
      *

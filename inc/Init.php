@@ -2,7 +2,9 @@
 
 namespace Inc\Geslib;
 
+use Inc\Geslib\Base\Enqueue;
 use Inc\Geslib\Base\GeslibEditorialController;
+use Inc\Geslib\Base\GeslibHelloController;
 use Inc\Geslib\Base\GeslibProductCatController;
 use Inc\Geslib\Base\GeslibProductController;
 use Inc\Geslib\Commands\GeslibStoreProductCategoriesCommand;
@@ -18,6 +20,7 @@ use Inc\Geslib\Commands\GeslibLinesCommand;
 use Inc\Geslib\Commands\GeslibStoreProductsCommand;
 use Inc\Geslib\Commands\GeslibStoreDataCommand;
 use Inc\Geslib\Commands\GeslibTruncateTableCommand;
+use Inc\Geslib\Base\GeslibStoreProductsFormController;
 use Inc\Geslib\Pages\Dashboard;
 
 final class Init
@@ -41,9 +44,12 @@ final class Init
 	    GeslibDeleteAllTermsCommand::class,
       GeslibStoreProductCategoriesCommand::class,
       GeslibStoreProductsCommand::class,
+      GeslibHelloController::class,
       GeslibProductCatController::class,
       GeslibProductController::class,
       GeslibEditorialController::class,
+      GeslibStoreProductsFormController::class,
+      Enqueue::class,
       Dashboard::class
     ];
   }

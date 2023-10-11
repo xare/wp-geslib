@@ -1,0 +1,23 @@
+.terminal {
+    background-color: #1e1e1e;
+    color: #7FFF7F;
+    font-family: 'Lucida Console', 'Menlo', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Inconsolata', 'Source Code Pro', 'Fira Mono', 'Hack', 'Courier New', Courier, monospace;
+    font-weight: bolder ;
+    font-size: 1rem;
+    padding: 2rem;
+    border-radius: 5px;
+    overflow: auto;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    box-shadow: 0px 0px 10px rgba(127, 255, 127, 0.5);
+    display:none;
+    margin-top: 1rem;
+  }
+
+  .queued {
+    color:#7FFF7F;
+  }
+
+  .notqueued{
+    color:#fa9507;
+  }

@@ -14,7 +14,7 @@ use WC_Product_Simple;
 use WP_CLI;
 
 class GeslibLinesCommand {
-    
+
     public function register() {
         if ( class_exists( 'WP_CLI' ) ) {
             WP_CLI::add_command( 'geslib lines', [$this, 'execute'] );
@@ -35,7 +35,9 @@ class GeslibLinesCommand {
         $geslibApiLog = new GeslibApiLog();
         $geslibApiLines = new GeslibApiLines();
         $geslibApiDb = new GeslibApiDbManager();
+        $log_id = $geslibApiDb->getGeslibLoggedId();
         $geslibApiLines->storeToLines();
+        $geslibApiDb->setLogStatus($log_id, 'queued');
         WP_CLI::line( 'Data has not been saved to geslib_lines!' );
     }
 }

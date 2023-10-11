@@ -7,63 +7,63 @@ use WP_CLI;
 
 class GeslibApiLines {
 	static $productKeys = [
-			"type", 
-			"action", 
-			"geslib_id", 
-			"description", 
-			"author", 
-			"pvp_ptas", 
-			"isbn", 
-			"ean", 
-			"num_paginas", 
-			"num_edicion", 
-			"origen_edicion", 
-			"fecha_edicion", 
-			"fecha_reedicion", 
-			"año_primera_edicion", 
-			"año_ultima_edicion", 
-			"ubicacion", 
-			"stock", 
-			"materia", 
-			"fecha_alta", 
-			"fecha_novedad", 
-			"Idioma", 
-			"formato_encuadernacion", 
-			"traductor", 
-			"ilustrador", 
-			"colección", 
-			"numero_coleccion", 
-			"subtitulo", 
-			"estado", 
-			"tmr", 
-			"pvp", 
-			"tipo_de_articulo", 
-			"clasificacion", 
-			"editorial", 
-			"pvp_sin_iva", 
-			"num_ilustraciones", 
-			"peso", 
-			"ancho", 
-			"alto", 
-			"fecha_aparicion", 
-			"descripcion_externa", 
-			"palabras_asociadas", 
-			"ubicacion_alternativa", 
-			"valor_iva", 
-			"valoracion", 
-			"calidad_literaria", 
-			"precio_referencia", 
-			"cdu", 
-			"en_blanco", 
-			"libre_1", 
-			"libre_2", 
-			"premiado", 
-			"pod", 
-			"distribuidor_pod", 
-			"codigo_old", 
-			"talla", 
-			"color", 
-			"idioma_original", 
+			"type",
+			"action",
+			"geslib_id",
+			"description",
+			"author",
+			"pvp_ptas",
+			"isbn",
+			"ean",
+			"num_paginas",
+			"num_edicion",
+			"origen_edicion",
+			"fecha_edicion",
+			"fecha_reedicion",
+			"año_primera_edicion",
+			"año_ultima_edicion",
+			"ubicacion",
+			"stock",
+			"materia",
+			"fecha_alta",
+			"fecha_novedad",
+			"Idioma",
+			"formato_encuadernacion",
+			"traductor",
+			"ilustrador",
+			"colección",
+			"numero_coleccion",
+			"subtitulo",
+			"estado",
+			"tmr",
+			"pvp",
+			"tipo_de_articulo",
+			"clasificacion",
+			"editorial",
+			"pvp_sin_iva",
+			"num_ilustraciones",
+			"peso",
+			"ancho",
+			"alto",
+			"fecha_aparicion",
+			"descripcion_externa",
+			"palabras_asociadas",
+			"ubicacion_alternativa",
+			"valor_iva",
+			"valoracion",
+			"calidad_literaria",
+			"precio_referencia",
+			"cdu",
+			"en_blanco",
+			"libre_1",
+			"libre_2",
+			"premiado",
+			"pod",
+			"distribuidor_pod",
+			"codigo_old",
+			"talla",
+			"color",
+			"idioma_original",
 			"titulo_original",
 			"pack",
 			"importe_canon",
@@ -131,12 +131,17 @@ class GeslibApiLines {
 	}
 	public function storeToLines(){
 		// 1. Read the log table
-		$filename = $this->db->getLogQueuedFile();
-		$log_id = $this->db->getLogId($filename);
+		$log_id = $this->db->getGeslibLoggedId();
+		error_log('storeToLines 135: '.$log_id);
+		$filename = $this->db->getGeslibLoggedFilename($log_id);
+		error_log('storeToLines 137: '.$filename);
+		$this->db->setLogStatus( $log_id, 'queued' );
 		// 2. Read the file and store in lines table
-		$this->readFile($this->mainFolderPath.$filename, $log_id);
+		$this->readFile( $this->mainFolderPath.$filename, $log_id );
+
 	}
-	
+
+
 	private function readFile($path, $log_id) {
 		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 		$i = 0;
@@ -155,7 +160,7 @@ class GeslibApiLines {
 			}
 		  }
 	}
-	
+
 	private function processGP4($data, $log_id) {
 
 		//"type" | "action" | "geslib_id" |	"description" |	"author" | "pvp_ptas" |	"isbn" | "ean" |"num_paginas" |	"num_edicion" |	"origen_edicion" |"fecha_edicion" |	"fecha_reedicion" |	"año_primera_edicion" |"año_ultima_edicion" |"ubicacion" |"stock" |	"materia" |	"fecha_alta" |	"fecha_novedad" |"Idioma" |	"formato_encuadernacion" |"traductor" |"ilustrador" |"colección" |"numero_coleccion" |"subtitulo" |	"estado" |	"tmr" |	"pvp" |	"tipo_de_articulo" |"clasificacion" |"editorial" |	"pvp_sin_iva" |	"num_ilustraciones" |"peso" |"ancho" |"alto" |		"fecha_aparicion" |	"descripcion_externa" |	"palabras_asociadas" |			"ubicacion_alternativa" |"valor_iva" |"valoracion" |"calidad_literaria" |	"precio_referencia" | "cdu" |"en_blanco" |"libre_1" |"libre_2" | 			"premiado" |"pod" | "distribuidor_pod" | "codigo_old" | "talla" |			"color" |"idioma_original" |"titulo_original" |	"pack" |"importe_canon" |	"unidades_compra" |"descuento_maximo"
@@ -169,7 +174,7 @@ class GeslibApiLines {
 				$this->db->insertProductData( $content_array,$data[1], $log_id );
 			}
 		}
-		
+
 		//$this->mergeContent($data['geslib_id'], $content_array, $type);
 	}
 
@@ -179,8 +184,8 @@ class GeslibApiLines {
 		// 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.\n\nAcompanyant les imatges, les paraules antigues de la Mediterr�nia. Ausi�s March, Estell�s, al-Russaf�, Llach, Espriu, Aub, Ibn Arab�, Lorca, Darwix o Kavafis. Veus de les tradicions que ens han forjat com a civilitzacions. Per� tamb� peda�os de relats i hist�ries poc conegudes que l'autor va descobrir durant tres mesos de conviv�ncia en aquest tros de Palestina. Hist�ries de saviesa i dolor. Hist�ries de paci�ncia i perseveran�a. Hist�ries de p�rdua i renaixen�a. Hist�ries de la bellesa oculta de Gaza.|
 		$geslib_id = $data[1];
 		$content_array['sinopsis'] = $data[3];
-		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-		$this->mergeContent($geslib_id, $content_array, 'product');
+		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
+		$this->mergeContent( $geslib_id, $content_array, 'product');
 	}
 
 	private function process6TE($data, $log_id) {
@@ -206,11 +211,11 @@ class GeslibApiLines {
 		if( in_array( $data[1],['A','M'] ) ) {
 			//insert or update
 
-			$this->insert2GeslibLines( 
-								$data[2], 
-								$log_id, 
-								'product_cat', 
-								$data[1], 
+			$this->insert2GeslibLines(
+								$data[2],
+								$log_id,
+								'product_cat',
+								$data[1],
 								$this->geslibApiSanitize->utf8_encode($data[3]));
 		} else if ( $data[1] == 'B' ) {
 			//delete
@@ -218,18 +223,18 @@ class GeslibApiLines {
 	}
 
 	private function process5( $data, $log_id ) {
-		//Add a category to to a 
+		//Add a category to to a
 		// “5”|Código de materia (varchar(12))|Código de articulo + SEPARADOR
 		//5|17|1|
 		$geslib_id = $data[2];
 		if($data[1] !== '0') {
 			if( isset( $content_array['categories'] ) )
 				array_push( $content_array['categories'], [ $data[1] => $data[2] ] );
-			else 
+			else
 				$content_array['categories'][$data[1]] = $data[2];
 				//$content_array['categories'][$data[1]]['geslib_id'] = $data[2];
-			
-			$this->mergeContent($geslib_id, $content_array, 'product');
+
+			$this->mergeContent($geslib_id, $content_array, 'product', $log_id);
 		}
 	}
 	private function processAUT( $data, $log_id ) {
@@ -239,7 +244,7 @@ class GeslibApiLines {
 	private function processAUTBIO( $data, $log_id ) {
 		// Procesa las líneas AUTBIO aquí
 	}
-	
+
 	private function insert2Gesliblines( $geslib_id, $log_id, $type, $action, $data = null ) {
 		$data_array = [
 			'log_id' => $log_id,
@@ -249,32 +254,40 @@ class GeslibApiLines {
 			'content' => $data,
 			'queued' => 1
 		];
-		
+
 		$this->db->insert2GeslibLines( $data_array );
 	}
 
-	private function mergeContent( $geslib_id, $content_array, $type ) {
-		
+	private function mergeContent( $geslib_id, $content_array, $type, $log_id = 0, $action = '' ) {
 		//this function is called when the product has been created but we need to add more data to its content json string
-		
+
 		//1. Get the content given the $geslib_id
 		$result = $this->db->fetchContent( $geslib_id, $type );
-		
+
 		if( $result ){
-			$existing_content = json_decode( $result, true);
-			if(isset($existing_content['categories']) && count($content_array['categories']) > 0) {	
+			$existing_content = json_decode( $result, true );
+			if(isset( $existing_content['categories']) && count($content_array['categories'] ) > 0) {
 				array_push( $existing_content['categories'], $content_array['categories'] );
 				$content_array = $existing_content;
 			} else {
 				$content_array = array_merge( $existing_content, $content_array );
 			}
 		}
-		$content = json_encode($content_array);
+		$content = json_encode( $content_array );
 		if ( $result ) {
 			// update
-			$this->db->updateGeslibLines($geslib_id, $type, $content);
+			$this->db->updateGeslibLines( $geslib_id, $type, $content );
 		} else {
-			return "error";
+			$data_array = [
+				'log_id' => $log_id,
+				'geslib_id' => $geslib_id,
+				'entity' => $type,
+				'action' => $action,
+				'content' => $content,
+				'queued' => 1
+			];
+			$this->db->insert2GeslibLines( $data_array );
+			return "Hemos creado una nueva entrada";
 		}
 	}
 

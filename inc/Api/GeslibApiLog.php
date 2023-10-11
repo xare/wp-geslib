@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Inc\Geslib\Api;
 
@@ -19,6 +19,10 @@ class GeslibApiLog {
 
     public function getQueuedFile(){
         return $this->db->getLogQueuedFile();
+    }
+
+    public function setStatus( $log_id, $status ){
+        return $this->db->setLogStatus( $log_id, $status );
     }
 
 }

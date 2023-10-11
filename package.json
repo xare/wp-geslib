@@ -1,0 +1,57 @@
+{
+    "name": "geslib",
+    "version": "1.0.0",
+    "description": "Geslib for a WP plugin",
+    "main": "gulpfile.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/xare/wordpress-plugin-starter-kit.git"
+    },
+    "keywords": [
+        "gulp",
+        "es6",
+        "scss",
+        "wordpress",
+        "plugin",
+        "php"
+    ],
+    "author": "Juan Etxenike Almeida",
+    "license": "GPL-3.0",
+    "bugs": {
+        "url": "https://github.com/xare/wordpress-plugin-starter-kit/issues"
+    },
+    "homepage": "https://github.com/xare/wordpress-plugin-starter-kit#readme",
+    "devDependencies": {
+        "@babel/core": "^7.21.3",
+        "@babel/preset-env": "^7.20.2",
+        "babelify": "^10.0.0",
+        "browser-sync": "^2.29.0",
+        "browserify": "^17.0.0",
+        "browserify-shim": "^3.8.16",
+        "gulp": "^4.0.2",
+        "gulp-autoprefixer": "^8.0.0",
+        "gulp-concat": "^2.6.1",
+        "gulp-if": "^3.0.0",
+        "gulp-notify": "^4.0.0",
+        "gulp-options": "^1.1.1",
+        "gulp-plumber": "^1.2.1",
+        "gulp-rename": "^2.0.0",
+        "gulp-sass": "^5.1.0",
+        "gulp-sourcemaps": "^3.0.0",
+        "gulp-strip-debug": "^5.0.0",
+        "gulp-uglify": "^3.0.2",
+        "gulp-uglifycss": "^1.1.0",
+        "sass": "^1.59.3",
+        "sweetalert": "^2.1.2",
+        "vinyl-buffer": "^1.0.1",
+        "vinyl-source-stream": "^2.0.0"
+    },
+    "babel": {
+        "presets": [
+            "@babel/preset-env"
+        ]
+    }
+}

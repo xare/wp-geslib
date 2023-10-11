@@ -28,7 +28,6 @@
         $option_name = $args['option_name'];
         $options = get_option($option_name);
         $value = isset($options[$name]) ? $options[$name] : '';
-        var_dump($value);
         /* if ( isset($_POST['edit_post'])) {
             $input = get_option( $option_name );
             $value = $input[$_POST['edit_post']][$name];

@@ -23,19 +23,37 @@ class GeslibApiReadFiles {
 	public function readFolder(){
 
 		$files = glob($this->mainFolderPath . 'INTER*');
-		
+
 		foreach($files as $file) {
 			if (is_file($file)) {
 				$filename = basename($file);
                 $linesCount = count(file($file));
 				// Check if the filename already exists in the database
-                if (!$this->db->isFilenameExists($filename)) { 
+                if (!$this->db->isFilenameExists($filename)) {
 					$this->db->insertLogData($filename, 'logged', $linesCount);
 				}
 			}
 		}
 
 		$this->processZipFiles();
+	}
+
+	public function listFilesInFolder() {
+		$justFileNames = array_map( 'basename', glob( $this->mainFolderPath . 'INTER*' ) );
+		$loggedFiles = $this->_fetchLoggedFilesFromDb();
+		return $loggedFiles;
+		// Now filter $justFileNames based on $loggedFiles
+		$filesStatus = array_map( function( $filename ) use ( $loggedFiles ) {
+			return in_array( $filename, $loggedFiles ) ? 'queued' : 'notqueued';
+		}, $justFileNames );
+
+		// If you still want filenames along with their status
+		return array_combine( $justFileNames, $filesStatus );
+	}
+
+	private function _fetchLoggedFilesFromDb() {
+		global $wpdb;
+		return $wpdb->get_results("SELECT filename, status FROM {$wpdb->prefix}geslib_log");
 	}
 
 	/**
@@ -105,10 +123,10 @@ class GeslibApiReadFiles {
 		$this->db->insertLogData($uncompressedFileName, 'logged', $linesCount);
 	}
 	}
-	private function insertLogData($filename, $line_count) {
+	/* private function insertLogData($filename, $line_count) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'geslib_log';
-	
+
 		$result = $wpdb->insert(
 			$table_name,
 			array(
@@ -123,17 +141,17 @@ class GeslibApiReadFiles {
 				'%d', // for processed_lines
 			)
 		);
-	
+
 		if (false === $result) {
 			error_log('Insert failed: ' . $wpdb->last_error);
 		}
-	}
-	
+	} */
+
 	public function countLines( $filename ) {
 		// Check if the file exists
 		if( file_exists( $filename ) )
 			return count( file( $filename ) );
-		else 
+		else
 			return false; // Return false if file not found
 	}
 }

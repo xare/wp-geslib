@@ -1,6 +1,6 @@
 <?php
 /**
- * @package starterkit
+ * @package geslib
  */
 
  namespace Inc\Geslib\Base;
@@ -20,6 +20,7 @@
     $this->plugin = plugin_basename( dirname( __FILE__, 3) ) . '/geslib.php';
     $this->managers = [
       'dashboard' => 'Dashboard',
+      'storeProducts' => 'Store Products'
     ];
   }
 
@@ -28,6 +29,4 @@
     $option = get_option('geslib');
     return isset($option[$key]) ? $option[$key] : false;
   }
-
-
  }

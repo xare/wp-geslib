@@ -19,7 +19,9 @@ class GeslibEditorialController extends BaseController{
 
     public function geslib_add_category_id_field($taxonomy) {
         ?><div class="form-field term-group">
-            <label for="editorial_geslib_id"><?php _e('Geslib Editorial ID', 'geslib'); ?></label>
+            <label for="editorial_geslib_id">
+                <?php _e('Geslib Editorial ID', 'geslib'); ?>
+            </label>
             <input type="number" id="editorial_geslib_id" name="editorial_geslib_id" class="postform">
         </div><?php
     }

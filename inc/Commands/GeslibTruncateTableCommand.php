@@ -23,7 +23,7 @@ class GeslibTruncateTableCommand {
      *
      * ## OPTIONS
      *
-     * 
+     *
      * ## EXAMPLES
      *
      *     wp geslib truncateTable
@@ -31,8 +31,7 @@ class GeslibTruncateTableCommand {
      * @when after_wp_load
      */
     public function execute( $args, $assoc_args ) {
-        global $wpdb;
-        $wpdb->query('TRUNCATE TABLE '.$wpdb->prefix.'geslib_lines');
+        $this->db->truncateGeslibLines();
         WP_CLI::line( 'Geslib lines has been emptied. ');
     }
 }

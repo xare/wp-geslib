@@ -21,6 +21,7 @@ use Inc\Geslib\Commands\GeslibStoreProductsCommand;
 use Inc\Geslib\Commands\GeslibStoreDataCommand;
 use Inc\Geslib\Commands\GeslibTruncateTableCommand;
 use Inc\Geslib\Base\GeslibStoreProductsFormController;
+use Inc\Geslib\Commands\GeslibQueueCommand;
 use Inc\Geslib\Pages\Dashboard;
 
 final class Init
@@ -44,6 +45,7 @@ final class Init
 	    GeslibDeleteAllTermsCommand::class,
       GeslibStoreProductCategoriesCommand::class,
       GeslibStoreProductsCommand::class,
+      GeslibQueueCommand::class,
       GeslibHelloController::class,
       GeslibProductCatController::class,
       GeslibProductController::class,

@@ -27,6 +27,7 @@ class GeslibApiReadFiles {
 		foreach($files as $file) {
 			if (is_file($file)) {
 				$filename = basename($file);
+				var_dump($filename);
                 $linesCount = count(file($file));
 				// Check if the filename already exists in the database
                 if (!$this->db->isFilenameExists($filename)) {
@@ -40,21 +41,11 @@ class GeslibApiReadFiles {
 
 	public function listFilesInFolder() {
 		$justFileNames = array_map( 'basename', glob( $this->mainFolderPath . 'INTER*' ) );
-		$loggedFiles = $this->_fetchLoggedFilesFromDb();
-		return $loggedFiles;
-		// Now filter $justFileNames based on $loggedFiles
-		$filesStatus = array_map( function( $filename ) use ( $loggedFiles ) {
-			return in_array( $filename, $loggedFiles ) ? 'queued' : 'notqueued';
-		}, $justFileNames );
-
-		// If you still want filenames along with their status
-		return array_combine( $justFileNames, $filesStatus );
+		$geslibApiDbManager = new GeslibApiDbManager;
+		return $geslibApiDbManager->fetchLoggedFilesFromDb();
 	}
 
-	private function _fetchLoggedFilesFromDb() {
-		global $wpdb;
-		return $wpdb->get_results("SELECT filename, status FROM {$wpdb->prefix}geslib_log");
-	}
+
 
 	/**
      * Process ZIP files in the HISTO folder: uncompress, read, compress, and insert data into the database.
@@ -69,7 +60,16 @@ class GeslibApiReadFiles {
             foreach ($zipFiles as $zipFile) {
                 $this->processZipFile($zipFile);
             }
+
         }
+
+		$zipFiles = glob($this->mainFolderPath . 'INTER*.zip');
+
+		// Iterate through each ZIP file
+		foreach ($zipFiles as $zipFile) {
+			var_dump($zipFile);
+			$this->processZipFile($zipFile);
+		}
     }
 
 	/**
@@ -77,12 +77,12 @@ class GeslibApiReadFiles {
      *
      * @param string $zipFilePath Path to the ZIP file.
      */
-    private function processZipFile($zipFilePath) {
+    public function processZipFile($zipFilePath) {
         // Uncompress the ZIP file to a temporary directory
         $tempDir = wp_tempnam();
         $zip = new ZipArchive();
-        if ($zip->open($zipFilePath) === true) {
-            $zip->extractTo($tempDir);
+        if ( $zip->open( $zipFilePath ) === true ) {
+            $zip->extractTo( dirname( $zipFilePath ) );
             $zip->close();
         }
 
@@ -114,15 +114,55 @@ class GeslibApiReadFiles {
 			rmdir($tempDir);
 		}
 
-	// Insert data into the database table for the compressed file
-	$startDate = date('Y-m-d H:i:s');
+		// Insert data into the database table for the compressed file
+		$startDate = date('Y-m-d H:i:s');
 
-	// Check if the filename already exists in the database
-	if (!$this->db->isFilenameExists($uncompressedFileName)) {
-		// Insert data into the database table
-		$this->db->insertLogData($uncompressedFileName, 'logged', $linesCount);
+		// Check if the filename already exists in the database
+		if (!$this->db->isFilenameExists($uncompressedFileName)) {
+			// Insert data into the database table
+			$this->db->insertLogData($uncompressedFileName, 'logged', $linesCount);
+		}
 	}
+
+	// Function to check if the file is already unzipped
+	public function isUnzipped($zipPath, $unzipDir) {
+		$zip = new ZipArchive;
+		if ($zip->open($zipPath) === TRUE) {
+			for ($i = 0; $i < $zip->numFiles; $i++) {
+				$filename = $zip->getNameIndex($i);
+				if (file_exists($unzipDir . $filename)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
+
+	public function unzipFile(string $path) {
+		// Check if the ZIP file is already unzipped
+		if (!$this->isUnzipped($path, $this->mainFolderPath)) {
+			// Initialize the ZipArchive class
+			$zip = new ZipArchive;
+			$res = $zip->open($path);
+			if ($res === TRUE) {
+				// Extract the ZIP file to the same folder
+				$zip->extractTo($this->mainFolderPath);
+				$extractedFilename = $zip->getNameIndex(0);
+				$zip->close();
+			} else {
+				// Handle error
+				echo 'Could not open the ZIP file.';
+			}
+		}
+
+		// Update the filename to the extracted file (if you know the name)
+		// $filename = 'your_extracted_file_name_here';
+
+		// Or you can programmatically find the extracted file name
+		// if it follows a specific pattern or if it's the only file in the ZIP
+		return $extractedFilename;
+	}
+
 	/* private function insertLogData($filename, $line_count) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'geslib_log';

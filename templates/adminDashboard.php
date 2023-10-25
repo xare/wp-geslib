@@ -7,6 +7,7 @@
     <li><a href="#tab-2">Manage Settings</a></li>
     <li><a href="#tab-3">Logs</a></li>
     <li><a href="#tab-4">Lines</a></li>
+    <li><a href="#tab-5">Queues</a></li>
   </ul>
 
   <div class="tab-content">
@@ -14,13 +15,16 @@
       <?php include 'tab1_content.php'; ?>
     </div>
     <div id="tab-2" class="tab-pane">
-    <?php include 'tab2_content.php'; ?>
+      <?php include 'tab2_content.php'; ?>
     </div>
     <div id="tab-3" class="tab-pane">
       <?php include 'tab3_content.php'; ?>
     </div>
     <div id="tab-4" class="tab-pane">
       <?php include 'tab4_content.php'; ?>
+    </div>
+    <div id="tab-5" class="tab-pane">
+      <?php include 'tab5_content.php'; ?>
     </div>
   </div>
 </div>

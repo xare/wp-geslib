@@ -59,4 +59,3 @@
                   <p>No data found.</p>
               <?php endif; ?>
         </div>
-      </div>

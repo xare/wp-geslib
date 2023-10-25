@@ -65,10 +65,10 @@ async function js() {
             .bundle()
             .pipe( source(entry) )
             .pipe( buffer() )
-            .pipe( sourcemaps.init({ loadMaps: true }) )
+            .pipe( sourcemaps.init( { loadMaps: true } ) )
             .pipe( uglify() )
-            .on('error', function(err) { console.log(err.toString()); this.emit('end'); })  // Handle errors
-            .pipe( rename({ extname: '.min.js' }) )
+            .on('error', function( err ) { console.log(err.toString()); this.emit('end'); })  // Handle errors
+            .pipe( rename( { extname: '.min.js' } ) )
             .pipe( sourcemaps.write( mapURL ) )  // Write inline source maps
             .pipe( dest( jsDIST ) )
             .on( 'end', function() {

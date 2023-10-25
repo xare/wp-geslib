@@ -6,70 +6,86 @@ use Inc\Geslib\Api\GeslibApiWpManager;
 use WP_CLI;
 
 class GeslibApiLines {
-	static $productKeys = [
+	static $productDeleteKeys = [
+		"type",
+		"action",
+		"geslib_id"
+	];
+	static $authorDeleteKeys = [
 			"type",
 			"action",
-			"geslib_id",
-			"description",
-			"author",
-			"pvp_ptas",
-			"isbn",
-			"ean",
-			"num_paginas",
-			"num_edicion",
-			"origen_edicion",
-			"fecha_edicion",
-			"fecha_reedicion",
-			"año_primera_edicion",
-			"año_ultima_edicion",
-			"ubicacion",
-			"stock",
-			"materia",
-			"fecha_alta",
-			"fecha_novedad",
-			"Idioma",
-			"formato_encuadernacion",
-			"traductor",
-			"ilustrador",
-			"colección",
-			"numero_coleccion",
-			"subtitulo",
-			"estado",
-			"tmr",
-			"pvp",
-			"tipo_de_articulo",
-			"clasificacion",
-			"editorial",
-			"pvp_sin_iva",
-			"num_ilustraciones",
-			"peso",
-			"ancho",
-			"alto",
-			"fecha_aparicion",
-			"descripcion_externa",
-			"palabras_asociadas",
-			"ubicacion_alternativa",
-			"valor_iva",
-			"valoracion",
-			"calidad_literaria",
-			"precio_referencia",
-			"cdu",
-			"en_blanco",
-			"libre_1",
-			"libre_2",
-			"premiado",
-			"pod",
-			"distribuidor_pod",
-			"codigo_old",
-			"talla",
-			"color",
-			"idioma_original",
-			"titulo_original",
-			"pack",
-			"importe_canon",
-			"unidades_compra",
-			"descuento_maximo"
-			];
+			"geslib_id"
+	];
+	static $productKeys = [
+		"type",
+		"action",
+		"geslib_id",
+		"description",
+		"author",
+		"pvp_ptas",
+		"isbn",
+		"ean",
+		"num_paginas",
+		"num_edicion",
+		"origen_edicion",
+		"fecha_edicion",
+		"fecha_reedicion",
+		"año_primera_edicion",
+		"año_ultima_edicion",
+		"ubicacion",
+		"stock",
+		"materia",
+		"fecha_alta",
+		"fecha_novedad",
+		"Idioma",
+		"formato_encuadernacion",
+		"traductor",
+		"ilustrador",
+		"colección",
+		"numero_coleccion",
+		"subtitulo",
+		"estado",
+		"tmr",
+		"pvp",
+		"tipo_de_articulo",
+		"clasificacion",
+		"editorial",
+		"pvp_sin_iva",
+		"num_ilustraciones",
+		"peso",
+		"ancho",
+		"alto",
+		"fecha_aparicion",
+		"descripcion_externa",
+		"palabras_asociadas",
+		"ubicacion_alternativa",
+		"valor_iva",
+		"valoracion",
+		"calidad_literaria",
+		"precio_referencia",
+		"cdu",
+		"en_blanco",
+		"libre_1",
+		"libre_2",
+		"premiado",
+		"pod",
+		"distribuidor_pod",
+		"codigo_old",
+		"talla",
+		"color",
+		"idioma_original",
+		"titulo_original",
+		"pack",
+		"importe_canon",
+		"unidades_compra",
+		"descuento_maximo"
+	];
+	static $authorKeys = [
+		"type",
+		"action",
+		"geslib_id",
+		"name"
+	];
 	static $lineTypes = [
 		'1L', // Editoriales
 		'1A', // Compañías discográficas
@@ -89,14 +105,15 @@ class GeslibApiLines {
 		"6TE", // Referencias del editor (traducidas)
 		"6IT", // Índice del libro (traducido)
 		//"LA", // Autores normalizados asociados a un artículo
-		"7", // Formatos de encuadernación
-		"8", // Idiomas
+		//"7", // Formatos de encuadernación
+		//"8", // Idiomas
 		//"9", // Palabras vacías
 		//"B", // Stock
 		//"B2", // Stock por centros
 		"E", // Estados de artículos
 		//"CLI", // Clientes
 		"AUT", // Autores
+		"AUTBIO", // Biografías de Autores
 		//"I", // Indicador de carga inicial. Cuando este carácter aparece en la primera línea, indica que se están enviando todos los datos y de todas las entidades
 		//"IPC", // Incidencias en pedidos de clientes
 		//"P", // Promociones de artículos (globales a todos los centros)
@@ -132,50 +149,131 @@ class GeslibApiLines {
 	public function storeToLines(){
 		// 1. Read the log table
 		$log_id = $this->db->getGeslibLoggedId();
-		error_log('storeToLines 135: '.$log_id);
-		$filename = $this->db->getGeslibLoggedFilename($log_id);
-		error_log('storeToLines 137: '.$filename);
+		$filename = $this->db->getGeslibLoggedFilename( $log_id );
 		$this->db->setLogStatus( $log_id, 'queued' );
+		$fullPath = $this->mainFolderPath . $filename;
+
 		// 2. Read the file and store in lines table
-		$this->readFile( $this->mainFolderPath.$filename, $log_id );
-
-	}
-
-
-	private function readFile($path, $log_id) {
-		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-		$i = 0;
-		foreach ($lines as $line) {
-			//if ( $i > 4000) return false;
-			$data = explode( '|', $line ) ;
-			array_pop($data);
-			if(in_array($data[0], self::$lineTypes)) {
-				$function_name = 'process' . $data[0];
-				if (method_exists($this, $function_name)) {
-					$this->{$function_name}($data, $log_id);
-					$i++;
-				} else {
-					// Handle unexpected values for $datos[0] if needed.
-				}
-			}
-		  }
-	}
-
-	private function processGP4($data, $log_id) {
-
-		//"type" | "action" | "geslib_id" |	"description" |	"author" | "pvp_ptas" |	"isbn" | "ean" |"num_paginas" |	"num_edicion" |	"origen_edicion" |"fecha_edicion" |	"fecha_reedicion" |	"año_primera_edicion" |"año_ultima_edicion" |"ubicacion" |"stock" |	"materia" |	"fecha_alta" |	"fecha_novedad" |"Idioma" |	"formato_encuadernacion" |"traductor" |"ilustrador" |"colección" |"numero_coleccion" |"subtitulo" |	"estado" |	"tmr" |	"pvp" |	"tipo_de_articulo" |"clasificacion" |"editorial" |	"pvp_sin_iva" |	"num_ilustraciones" |"peso" |"ancho" |"alto" |		"fecha_aparicion" |	"descripcion_externa" |	"palabras_asociadas" |			"ubicacion_alternativa" |"valor_iva" |"valoracion" |"calidad_literaria" |	"precio_referencia" | "cdu" |"en_blanco" |"libre_1" |"libre_2" | 			"premiado" |"pod" | "distribuidor_pod" | "codigo_old" | "talla" |			"color" |"idioma_original" |"titulo_original" |	"pack" |"importe_canon" |	"unidades_compra" |"descuento_maximo"
-		// GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
-		if(count($data) !== count(self::$productKeys)) {
-			return;
-		} else {
-			if( $data[1] === 'A' ) {
-				$content_array = array_combine( self::$productKeys, $data );
-				$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-				$this->db->insertProductData( $content_array,$data[1], $log_id );
-			}
+		if (pathinfo($fullPath, PATHINFO_EXTENSION) === 'zip') {
+			$geslibReadFile = new GeslibApiReadFiles;
+			$filename = $geslibReadFile->unzipFile($fullPath);
 		}
 
-		//$this->mergeContent($data['geslib_id'], $content_array, $type);
+		$lines = file($this->mainFolderPath.$filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		$batch_size = 2000; // Choose a reasonable batch size
+		$queue = get_option('geslib_queue', []);
+
+		$batch = [];
+
+		foreach ($lines as $line) {
+			if( !$this->isInProductKey($line) ) continue;
+			$item = [
+				'line' => $this->sanitizeLine($line),
+				'log_id' => $log_id,
+				'type' => 'store_lines'  // type to identify the task in processQueue
+			];
+			$batch[] = $item;
+
+			if (count($batch) >= $batch_size) {
+				$queue = array_merge($queue, $batch);
+				update_option('geslib_queue', $queue);
+				$batch = [];
+			}
+		}
+		// Don't forget the last batch
+		if (!empty($batch)) {
+			$queue = array_merge($queue, $batch);
+			update_option('geslib_queue', $queue);
+		}
+
+    	return 'File ' . $path . ' has been read with ' . count( $lines ) . ' lines';
+	}
+
+	public function sanitizeLine($line) {
+		// Split the line into its components
+		$line_items = explode('|', $line);
+
+		// Sanitize each component
+		$sanitized_items = array_map(function($line_item) {
+			if(is_string($line_item))
+				return $this->geslibApiSanitize->utf8_encode($line_item);
+			return $line_item;
+		}, $line_items);
+
+		// Join the components back together
+		$sanitized_line = implode('|', $sanitized_items);
+
+		return $sanitized_line;
+	}
+
+	public function isInProductKey($line) {
+		$line_items = explode('|', $line);
+		var_dump($line_items);
+		if (is_array($line_items) && in_array($line_items[0], self::$lineTypes)){
+			return implode('|', $line_items);
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * readFile
+	 *
+	 * @param  string $path
+	 * @param  int $log_id
+	 * @return void
+	 */
+	/* private function readFile( string $path, int $log_id) {
+		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		$queue = get_option('geslib_queue', []);
+		foreach ($lines as $line) {
+			$item = [
+				'line' => $line,
+				'log_id' => $log_id,
+				'type' => 'read_line'  // type to identify the task in processQueue
+			];
+			$queue[] = $item;
+		  }
+		  update_option('geslib_queue', $queue);
+    	return 'File ' . $path . ' has been read with ' . count($lines) . ' lines';
+	} */
+
+	/**
+	 * readLine
+	 *
+	 * @param  string $line
+	 * @param  int $log_id
+	 * @return void
+	 */
+	public function readLine( string $line, int $log_id ) :void {
+		$data = explode( '|', $line ) ;
+		array_pop($data);
+		if( in_array($data[0], self::$lineTypes ) ) {
+			$function_name = 'process' . $data[0];
+			if ( method_exists( $this, $function_name ) ) {
+				$this->{$function_name}($data, $log_id);
+			}
+		}
+	}
+
+	/**
+	 * processGP4
+	 * //"type" | "action" | "geslib_id" |	"description" |	"author" | "pvp_ptas" |	"isbn" | "ean" |"num_paginas" |	"num_edicion" |	"origen_edicion" |"fecha_edicion" |	"fecha_reedicion" |	"año_primera_edicion" |"año_ultima_edicion" |"ubicacion" |"stock" |	"materia" |	"fecha_alta" |	"fecha_novedad" |"Idioma" |	"formato_encuadernacion" |"traductor" |"ilustrador" |"colección" |"numero_coleccion" |"subtitulo" |	"estado" |	"tmr" |	"pvp" |	"tipo_de_articulo" |"clasificacion" |"editorial" |	"pvp_sin_iva" |	"num_ilustraciones" |"peso" |"ancho" |"alto" |		"fecha_aparicion" |	"descripcion_externa" |	"palabras_asociadas" |			"ubicacion_alternativa" |"valor_iva" |"valoracion" |"calidad_literaria" |	"precio_referencia" | "cdu" |"en_blanco" |"libre_1" |"libre_2" | 			"premiado" |"pod" | "distribuidor_pod" | "codigo_old" | "talla" |			"color" |"idioma_original" |"titulo_original" |	"pack" |"importe_canon" |	"unidades_compra" |"descuento_maximo"
+	 * // GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
+	 *
+	* @param  array $data
+	 * @param  int $log_id
+	 * @return void
+	 */
+	private function processGP4( array $data, int $log_id ) {
+		if( in_array( $data[1], ['A','M'] ) ) {
+			$content_array = array_combine( self::$productKeys, $data );
+			$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
+		} elseif ($data[1] == 'B' ){
+			// Delete
+			$content_array = array_combine( self::$productDeleteKeys, $data );
+		}
+		$this->db->insertData( $content_array, $data[1], $log_id, 'product' );
 	}
 
 	private function process6E($data, $log_id) {
@@ -237,15 +335,53 @@ class GeslibApiLines {
 			$this->mergeContent($geslib_id, $content_array, 'product', $log_id);
 		}
 	}
+	/**
+	 * processAUT
+	 * Procesa las líneas AUT
+	 * “AUT”|Acción|GeslibID|Nombre del autor
+	 * AUT|A|2806|HILAL, JAMIL|
+	 * "AUT"|B|GeslibId
+	 *
+	 * @param  mixed $data
+	 * @param  mixed $log_id
+	 * @return void
+	 */
 	private function processAUT( $data, $log_id ) {
-		// Procesa las líneas AUT aquí
+		if (in_array( $data[1], ['A','M'] )){
+			// Insert or Update
+			$content_array = array_combine( self::$authorKeys, $data );
+			$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
+		} elseif ($data[1] == 'B' ){
+			// Delete
+			$content_array = array_combine( self::$authorDeleteKeys, $data );
+		}
+		$this->db->insertData( $content_array, $data[1], $log_id, 'autor' );
+	}
+	/**
+	 * processAUTBIO
+	 * //AUTBIO|3|Realiz� estudios de econom�a, ciencias pol�ticas y sociolog�a. Doctor en Ciencias Pol�ticas y profesor titular en la Facultad de Ciencias Pol�ticas y Sociolog�a de la Universidad Complutense de Madrid, hizo sus estudios de posgrado en la Universidad de Heidelberg (Alemania). En septiembre de 2010 fue ponente central en la conmemoraci�n del D�a Internacional de la Democracia en la Asamblea General de las Naciones Unidas en Nueva York. Dirige el Departamento de Gobierno, Pol�ticas P�blicas y Ciudadan�a Global del Instituto Complutense de Estudios Internacionales y pertenece al consejo cient�fico de ATTAC.|
+	 *
+	 * @param  mixed $data
+	 * @param  int $log_id
+	 * @return void
+	 */
+	private function processAUTBIO( $data, int $log_id ) {
+		$content_array['biografia'] = $data[2];
+		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
+		$this->mergeContent( $data[1], $data[2], 'autor');
 	}
 
-	private function processAUTBIO( $data, $log_id ) {
-		// Procesa las líneas AUTBIO aquí
-	}
-
-	private function insert2Gesliblines( $geslib_id, $log_id, $type, $action, $data = null ) {
+	/**
+	 * insert2Gesliblines
+	 *
+	 * @param  int $geslib_id
+	 * @param  int $log_id
+	 * @param  string $type
+	 * @param  string $action
+	 * @param  array $data
+	 * @return void
+	 */
+	private function insert2Gesliblines( int $geslib_id, int $log_id, string $type, string $action, array $data = null ) {
 		$data_array = [
 			'log_id' => $log_id,
 			'geslib_id' => $geslib_id,
@@ -257,27 +393,23 @@ class GeslibApiLines {
 
 		$this->db->insert2GeslibLines( $data_array );
 	}
-
-	private function mergeContent( $geslib_id, $content_array, $type, $log_id = 0, $action = '' ) {
+	/**
+	 * mergeContent
+	 * this function is called when the product has been created but we need to add more data to its content json string
+	 *
+	 * @param  int $geslib_id
+	 * @param  array $new_content_array
+	 * @param  string $type
+	 * @return mixed
+	 */
+	private function mergeContent( int $geslib_id, array $new_content_array, string $type, int $log_id = 0, string $action = '' ) {
 		//this function is called when the product has been created but we need to add more data to its content json string
 
 		//1. Get the content given the $geslib_id
-		$result = $this->db->fetchContent( $geslib_id, $type );
-
-		if( $result ){
-			$existing_content = json_decode( $result, true );
-			if(isset( $existing_content['categories']) && count($content_array['categories'] ) > 0) {
-				array_push( $existing_content['categories'], $content_array['categories'] );
-				$content_array = $existing_content;
-			} else {
-				$content_array = array_merge( $existing_content, $content_array );
-			}
-		}
-		$content = json_encode( $content_array );
-		if ( $result ) {
-			// update
-			$this->db->updateGeslibLines( $geslib_id, $type, $content );
-		} else {
+		$original_content = $this->db->fetchContent( $geslib_id, $type );
+		$original_content_array = json_decode( $original_content, true);
+		if ( !$original_content ) {
+			$content = json_encode( $original_content_array );
 			$data_array = [
 				'log_id' => $log_id,
 				'geslib_id' => $geslib_id,
@@ -289,6 +421,26 @@ class GeslibApiLines {
 			$this->db->insert2GeslibLines( $data_array );
 			return "Hemos creado una nueva entrada";
 		}
+
+		if(isset( $original_content_array['categories']) && count($original_content_array['categories'] ) > 0) {
+			array_push( $original_content_array['categories'], $new_content_array['categories'] );
+			//$original_content_array = $new_content_content;
+		} else {
+			$content_array = array_merge( $original_content_array, $new_content_array );
+		}
+
+		$fields = ['sinopsis','biografia'];
+		foreach( $fields as $field ) {
+			if ( !isset($original_content_array[$field])
+			&& isset($new_content_array[$field])) {
+				$original_content_array[$field] = $new_content_array[$field];
+			}
+		}
+
+		$original_content = json_encode( $original_content_array );
+		if ( ! $original_content ) return FALSE;
+
+		$this->db->updateGeslibLines( $geslib_id, $type, $original_content );
 	}
 
 }

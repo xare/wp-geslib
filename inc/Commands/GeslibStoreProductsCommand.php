@@ -18,7 +18,16 @@ class GeslibStoreProductsCommand {
 
   public function register() {
     if ( class_exists( 'WP_CLI' ) ) {
-        WP_CLI::add_command( 'geslib storeProducts', [ $this, 'execute' ] );
+        WP_CLI::add_command( 'geslib storeProducts', [ $this, 'execute' ], [
+          'synopsis' => [
+              [
+                  'type'        => 'flag',
+                  'name'        => 'process-store-products',
+                  'description' => 'Process the queue for store_products tasks.',
+                  'optional'    => true,
+              ],
+          ],
+      ] );
     }
   }
 
@@ -32,16 +41,38 @@ class GeslibStoreProductsCommand {
     *
     * ## EXAMPLES
     *
-    * wp geslib storedata
-    *
+    * wp geslib storeProducts
+    * wp geslib storeProducts --process-store-products
     * @when after_wp_load
     */
     public function execute( $args, $assoc_args ) {
+      if ( isset( $assoc_args[ 'process-store-products' ] ) ) {
+        $this->processStoreProducts();
+        return;
+    }
       $this->db->storeProducts();
       $geslibApiLiones = new GeslibApiLines;
       $this->db->setLogStatus( $log_id, 'processed' );
       $this->db->truncateGeslibLines();
       WP_CLI::line( "Store products" );
+    }
+
+    /**
+     * processStoreProducts
+     *
+     * @return void
+     */
+    public function processStoreProducts() {
+      $queue = get_option('geslib_queue', []);
+      $newQueue = [];
+      $geslibDbManager = new GeslibDbManager;
+      foreach ($queue as $index => $task) {
+        if ($task['type'] === 'store_products') {
+          WP_CLI::line("Processing product for Geslib ID: {$task['geslib:id']}");
+          $geslibDbManager->storeProduct($task['geslib_id'], $task['content']);
+          WP_CLI::line("Processed product with log_id: {$task['geslib_id']}");
+        }
+      }
     }
 
 }

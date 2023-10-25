@@ -148,8 +148,16 @@ class GeslibApiDbManager {
 		}
 	}
 
-	public function insertProductData($content_array, $action, $log_id) {
-
+	/**
+	 * insertData
+	 *
+	 * @param  mixed $content_array
+	 * @param  string $action
+	 * @param  int $log_id
+	 * @param  string $entity
+	 * @return string
+	 */
+	public function insertData(mixed $content_array, string $action, int $log_id, string $entity):string {
 		global $wpdb;
 		try{
 			$wpdb->insert(
@@ -158,7 +166,7 @@ class GeslibApiDbManager {
 					'log_id' => $log_id,
 					'geslib_id' => $content_array['geslib_id'],
 					'action' => $action,
-					'entity' => 'product',
+					'entity' => $entity,
 					'content' => json_encode($content_array),
 					'queued' => 1
 				],
@@ -236,9 +244,6 @@ class GeslibApiDbManager {
     }
 
     public function storeEditorials( $editorial ) {
-		//$content = json_decode( $editorial->content, true );
-		//$content = json_decode( $editorial->content, true );
-		//$term_name = $content['editorial'];
 		$term_name = $editorial->content;
 		$term_slug = $this->_create_slug( $term_name );
 		$term_description = $term_name;
@@ -272,48 +277,97 @@ class GeslibApiDbManager {
 		return get_term($term_data['term_id'], 'editorials');
     }
 
+	public function storeAuthors( $author ) {
+		$term_name = $author->content;
+		$term_slug = $this->_create_slug( $term_name );
+		$term_description = $term_name;
+		$term = term_exists( $term_name, 'autores' ); // check if term already exists
+		if ( 0 !== $term && null !== $term ) {
+			// If the term exists, update it
+			$term_data = wp_update_term( $term['term_id'], 'autores', [
+				'name' => $term_name,
+				'slug' => $term_slug,
+				'description' => $term_description,
+			]);
+    	} else {
+        	// Otherwise, insert a new term
+        	$term_data = wp_insert_term(
+							$term_name,   // the term
+							'autores', // the taxonomy
+							[
+								'description'=> $term_description,
+								'slug' => $term_slug,
+							]);
+    	}
+
+		add_term_meta($term_data['term_id'],'autor_geslib_id', $author->geslib_id);
+		$editorial_geslib_id = get_term_meta( $term_data['term_id'], 'autor_geslib_id', true );
+
+        // Check for errors
+        if ( is_wp_error($term_data) ) {
+            // Handle the error here
+            echo $term_data->get_error_message();
+        }
+		return get_term($term_data['term_id'], 'authors');
+    }
+
+    private function _getTotalLinesProducts() {
+		global $wpdb;
+		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$query = $wpdb->prepare(
+			"SELECT * FROM {$table} WHERE action=%s and entity=%s",
+			[ 'A', 'product']
+		);
+		return count($wpdb->get_results($query));
+
+	}
 	public function storeProducts() {
 		global $wpdb;
 		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
-		if ( $_POST['offset'] != null && $_POST['batch_size'] != null ) {
-			$offset = $_POST['offset']; // Get offset from POST data
-    		$batch_size = $_POST['batch_size']; // Get batch size from POST data
-			$query = $wpdb->prepare(
-									"SELECT * FROM {$table}
-									WHERE action=%s and entity=%s LIMIT %d, %d",
-									[ 'A', 'product', $offset, $batch_size]
-								);
-								error_log('storeProducts function called.');
-								error_log('Offset: ' . $offset);
-								error_log('Batch size: ' . $batch_size);
-								error_log('SQL Query: ' . $query);
-		} else {
+		// Create a queue for storing products.
+        $actions = [
+            ['A', 'M'], // Add and Modify
+            ['B']       // Delete
+        ];
+		$queue = get_option('geslib_queue', []);
+
+		foreach ($actions as $actionSet) {
 			$query = $wpdb->prepare(
 				"SELECT * FROM {$table} WHERE action=%s and entity=%s",
-				[ 'A', 'product']
+				[ $action, 'product']
 			);
+			$lines = $wpdb->get_results($query);
+			//if ( count( $lines ) == 0) return FALSE;
+			foreach ($lines as $line){
+				$item = [
+					'geslib_id' => $line->geslib_id,
+					'content' => $line->content,
+					'type' => 'store_products'  // type to identify the task in processQueue
+				];
+				$queue[] = $item;
+				update_option( 'geslib_queue' , $queue);
+			}
 		}
-
-		$product_geslib_lines = $wpdb->get_results($query);
-
-		$totalLines = count($product_geslib_lines);
+		/* $totalLines = $this->_getTotalLinesProducts();
 		$processedLines = 0;
 		$hasMore = !empty($product_geslib_lines);
 		$progress = 0;
+		$response = [];
 		foreach($product_geslib_lines as $product_geslib_line) {
 			$this->storeProduct($product_geslib_line->geslib_id, $product_geslib_line->content);
-			$processedLines++;
-			$progress = ($processedLines / $totalLines) * 100;
+			$progress = ( $offset / $totalLines ) * 100;
 			update_option('geslib_product_progress', $progress);
+			$processedLines++;
 		}
 		update_option('geslib_hasmore', $hasMore);
 		$response = [
 			'hasMore' => $hasMore,
-			'progress' => $progress,
-			'message' => "Processed {$processedLines} products."
+			'progress' => number_format($progress, 2)." %",
+			'totalLines' => $totalLines,
+			'message' => "Processed {$offset} / {$totalLines} products."
 		];
 
-		return json_encode($response);
+		return json_encode($response); */
 	}
 
     public function storeProduct($geslib_id, $content){
@@ -366,12 +420,13 @@ class GeslibApiDbManager {
 
 		// Save the product to the database and get its ID
 		$product_id = $product->save();
-		if(isset($ean))
+		if(isset($ean)){
 			update_post_meta($product_id, '_ean', $ean);
+			update_post_meta($product_id, '_num_paginas', $num_paginas);
+		}
 		if(isset($author))
 			update_post_meta($product_id, '_author', $author);
-		if(isset($ean))
-			update_post_meta($product_id, '_num_paginas', $num_paginas);
+
 
 		// Get the integer value from the content array
 		$editorial_id = intval($content['editorial']);
@@ -390,8 +445,8 @@ class GeslibApiDbManager {
 		$terms = get_terms($args);
 		// Check if any term found
 		if (!empty($terms) && !is_wp_error($terms)) {
-    		// Terms found, get the first term
-    		$editorial_term = $terms[0]->term_id;
+			// Terms found, get the first term
+			$editorial_term = $terms[0]->term_id;
 			// Assign the product to the editorial taxonomy term
 			wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
 		}
@@ -473,7 +528,7 @@ class GeslibApiDbManager {
 		return $wpdb->get_results($query);
 	}
 
-	public function storeProductCategories($product_category) {
+	public function storeProductCategory($product_category) {
 
 		// Make sure the category doesn't already exist
 		if( !term_exists( $this->geslibApiSanitize->utf8_encode( $product_category->content ), 'product_cat' )) {
@@ -599,8 +654,22 @@ class GeslibApiDbManager {
 
 	public function truncateGeslibLines() {
 		global $wpdb;
+		$table_name = $wpdb->prefix.self::GESLIB_LINES_TABLE;
 		try {
-        	$wpdb->query( 'TRUNCATE TABLE '.$wpdb->prefix.'geslib_lines' );
+        	$wpdb->query( 'TRUNCATE TABLE '.$table_name )->execute();
+			return true;
+		} catch( \Exception $exception ) {
+			wp_error( 'Unable to truncate geslib_lines table' . $exception->getMessage() );
+			return false;
+		}
+	}
+
+	public function truncateGeslibLogs() {
+		global $wpdb;
+		try {
+			$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' WHERE log_id IN (SELECT id FROM '.$wpdb->prefix.self::GESLIB_LOG_TABLE.')');
+			$wpdb->query( 'ALTER TABLE ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' AUTO_INCREMENT = 1' );
+			$wpdb->query( 'TRUNCATE TABLE ' . $wpdb->prefix . self::GESLIB_LOG_TABLE );
 			return true;
 		} catch( \Exception $exception ) {
 			wp_error( 'Unable to truncate geslib_lines table' . $exception->getMessage() );
@@ -610,27 +679,53 @@ class GeslibApiDbManager {
 
 	public function deleteAllProducts() {
 		// Query for all products
-        $args = array(
-            'post_type'      => 'product',
-            'post_status'    => 'publish',
-            'posts_per_page' => -1,
-        );
-        $query = new WP_Query( $args );
-		$totalLines = $query->found_posts;
-    	$processedLines = 0;
-        // Loop through all products and delete
-        while ( $query->have_posts() ) {
-            $query->the_post();
-            $id = get_the_ID();
-            wp_delete_post( $id, true );
-			$processedLines++;
-        	$progress = ($processedLines / $totalLines) * 100;
-			update_option('geslib_delete_product_progress', $progress);
-        }
+		$batch_size = ($_POST['batch_size'] == null) ? -1 : $_POST['batch_size'];
+		$offset = ($_POST['offset'] == null) ? 0 : $_POST['offset'];
 
-        // Reset query data
-        wp_reset_postdata();
+		$args = [
+			'post_type'      => 'product',
+			'post_status'    => 'publish',
+			'posts_per_page' => $batch_size,
+		];
+
+		$query = new WP_Query( $args );
+		$totalLines = $query->found_posts;
+		$processedLines = 0;
+		$hasMore = !empty($product_geslib_lines);
+
+		// If no posts are returned, we're done
+		if ( !$query->have_posts() ) {
+			return;
+		}
+		$loop = 0;
+		$response = [];
+		// Loop through all products and delete
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			$id = get_the_ID();
+			wp_delete_post( $id, true );
+			$processedLines++;
+			$progress = ($processedLines / $totalLines) * 100;
+			update_option('geslib_delete_product_progress', $progress);
+			if ( $loop == 0 ) {
+				$response['title'] = "DELETING PRODUCTS";
+			}
+			$loop++;
+		}
+
+		// Reset query data
+		wp_reset_postdata();
+		$response['hasMore'] = $hasMore;
+		$response['progress'] = $progress;
+		$response['totalLines'] = $totalLines;
+		$response['message'] = "Processed {$processedLines} products.";
+		return json_encode( $response );
 	}
 
+	public function fetchLoggedFilesFromDb() {
+		global $wpdb;
+		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
+		return $wpdb->get_results( "SELECT filename, status FROM ".$table_name );
+	}
 
 }

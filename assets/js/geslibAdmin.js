@@ -20,21 +20,28 @@ async function showAlert( actionType, buttonValue, buttonMessage ) {
     return willProceed;
 }
 
-async function makeAjaxRequest( action) {
+async function makeAjaxRequest( action, additionalData = null ) {
     const formData = new FormData();
     formData.append('action', action);
-    formData.append('geslib_nonce', document.querySelector("#geslib_nonce").value);
 
-    /* for (const [key, value] of Object.entries( additionalData )) {
-        formData.append( key, value );
-    } */
+    if( additionalData ) {
+        for (const [key, value] of Object.entries( additionalData )) {
+            formData.append( key, value );
+        }
+    } else {
+        formData.append('geslib_nonce', document.querySelector("#geslib_nonce").value);
+    }
+    console.table( formData );
     const response = await fetch( ajaxurl, {
         method: "POST",
         credentials: "same-origin",
         body: formData
     });
+    console.info(response);
     try {
+        console.info(response);
         const jsonResponse = await response.json();
+        console.table(jsonResponse);
         if (jsonResponse.success) {
             return jsonResponse;
         } else {
@@ -100,26 +107,26 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    document.getElementById("geslibLogQueueProcess").addEventListener("click", async function(event) {
+    document.getElementById( "geslibLogQueueProcess" ).addEventListener( "click", async function( event ) {
         event.preventDefault();
 
         const additionalData = {
             'log_id': event.target.dataset.logId,
             'geslib_log_queue_nonce': document.querySelector("#geslib_log_queue_nonce").value
         };
+        const action = event.target.dataset.action ;
+        const data = await makeAjaxRequest( `geslib_log_${action}`, additionalData );
 
-        const data = await makeAjaxRequest('geslib_log_queue', additionalData);
-
-        if (data.success) {
+        if ( data.success ) {
             event.target.dataset.action = 'unqueue';
             event.target.textContent = 'Unqueue';
-            event.target.closest('tr').querySelectorAll('td').forEach(td => {
-                if (td.textContent === 'logged') {
+            event.target.closest( 'tr' ).querySelectorAll( 'td' ).forEach( td => {
+                if ( td.textContent === 'logged' ) {
                     td.textContent = 'queued';
                 }
             });
         } else {
-            console.error('Error');
+            console.error( 'Error' );
         }
     });
 

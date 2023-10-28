@@ -21,7 +21,8 @@
                 ['6. Store Products', 'primary', 'store_products',''],
                 ['X1. Truncate geslib log', 'delete', 'truncate_log','Esta acción borra todos los registros de los archivos procesados o puestos en cola.'],
                 ['X2. Truncate geslib lines', 'delete', 'truncate_lines',''],
-                ['X3. Delete all Products', 'delete', 'delete_products','']
+                ['X3. Delete all Products', 'delete', 'delete_products',''],
+                ['X4. Empty the queue', 'delete', 'empty_queue','']
             ];
 
             array_map(function($button) {

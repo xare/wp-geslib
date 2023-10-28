@@ -725,7 +725,7 @@ class GeslibApiDbManager {
 	public function fetchLoggedFilesFromDb() {
 		global $wpdb;
 		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
-		return $wpdb->get_results( "SELECT filename, status FROM ".$table_name );
+		return $wpdb->get_results( "SELECT filename, status FROM ".$wpdb->prefix.self::GESLIB_LOG_TABLE );
 	}
 
 }

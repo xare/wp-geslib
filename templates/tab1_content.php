@@ -20,7 +20,7 @@
                 ['5. Store Authors', 'primary', 'store_authors',''],
                 ['6. Store Products', 'primary', 'store_products',''],
                 ['X1. Truncate geslib log', 'delete', 'truncate_log','Esta acción borra todos los registros de los archivos procesados o puestos en cola.'],
-                ['X2. Truncate geslib lines', 'delete', 'truncate_lines',''],
+                ['X2. Truncate geslib lines', 'delete', 'truncate_lines','Esta acción borra todas las lineas del último archivo procesado de la cola.'],
                 ['X3. Delete all Products', 'delete', 'delete_products',''],
                 ['X4. Empty the queue', 'delete', 'empty_queue','']
             ];

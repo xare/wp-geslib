@@ -171,9 +171,9 @@ class GeslibApiDbManager {
 					'queued' => 1
 				],
 			);
-			return "The product data was successfully inserted to geslib lines";
+			return "The ".$entity." data was successfully inserted to geslib lines";
 		} catch (\Exception $e) {
-			return "The product data was NOT successfully inserted to geslib lines".$e->getMessage();
+			return "The ".$entity." data was NOT successfully inserted to geslib lines ".$e->getMessage();
 		}
 	}
 
@@ -326,18 +326,19 @@ class GeslibApiDbManager {
 		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
 		// Create a queue for storing products.
         $actions = [
-            ['A', 'M'], // Add and Modify
-            ['B']       // Delete
+            'A', 'M', // Add and Modify
+            'B'       // Delete
         ];
 		$queue = get_option('geslib_queue', []);
 
 		foreach ($actions as $actionSet) {
 			$query = $wpdb->prepare(
 				"SELECT * FROM {$table} WHERE action=%s and entity=%s",
-				[ $action, 'product']
+				[ $actionSet, 'product']
 			);
 			$lines = $wpdb->get_results($query);
 			//if ( count( $lines ) == 0) return FALSE;
+
 			foreach ($lines as $line){
 				$item = [
 					'geslib_id' => $line->geslib_id,
@@ -378,6 +379,7 @@ class GeslibApiDbManager {
 		$num_paginas = $content['num_paginas'];
 		$editorial_geslib_id = $content['editorial'];
 		$book_name = $content['description'];
+		$peso = $content['peso'];
 
 		if ( isset( $content['sinopsis'] ) )
 			$book_description = $content['sinopsis'];
@@ -416,6 +418,7 @@ class GeslibApiDbManager {
 		$product->set_catalog_visibility('visible');  // or 'hidden'
 		$product->set_price($book_price);
 		$product->set_regular_price($book_price);
+		$product->set_weight($peso);
 		// ... Set other product properties
 
 		// Save the product to the database and get its ID
@@ -654,9 +657,8 @@ class GeslibApiDbManager {
 
 	public function truncateGeslibLines() {
 		global $wpdb;
-		$table_name = $wpdb->prefix.self::GESLIB_LINES_TABLE;
 		try {
-        	$wpdb->query( 'TRUNCATE TABLE '.$table_name )->execute();
+        	$wpdb->query( 'TRUNCATE TABLE '.$wpdb->prefix.self::GESLIB_LINES_TABLE )->execute();
 			return true;
 		} catch( \Exception $exception ) {
 			wp_error( 'Unable to truncate geslib_lines table' . $exception->getMessage() );

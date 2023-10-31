@@ -16,6 +16,16 @@ class GeslibApiLines {
 			"action",
 			"geslib_id"
 	];
+	static $editorialDeleteKeys = [
+		"type",
+		"action",
+		"geslib_id"
+	];
+	static $categoriaDeleteKeys = [
+			"type",
+			"action",
+			"geslib_id"
+	];
 	static $productKeys = [
 		"type",
 		"action",
@@ -79,6 +89,22 @@ class GeslibApiLines {
 		"importe_canon",
 		"unidades_compra",
 		"descuento_maximo"
+	];
+	static $editorialKeys = [
+		"type",
+		"action",
+		"geslib_id",
+		"name",
+		"",
+		""
+	];
+	static $categoriaKeys = [
+		"type",
+		"action",
+		"geslib_id",
+		"name",
+		"",
+		""
 	];
 	static $authorKeys = [
 		"type",
@@ -146,6 +172,7 @@ class GeslibApiLines {
 		$this->db = new GeslibApiDbManager();
 		$this->geslibApiSanitize = new GeslibApiSanitize();
 	}
+
 	public function storeToLines(){
 		// 1. Read the log table
 		$log_id = $this->db->getGeslibLoggedId();
@@ -154,36 +181,38 @@ class GeslibApiLines {
 		$fullPath = $this->mainFolderPath . $filename;
 
 		// 2. Read the file and store in lines table
-		if (pathinfo($fullPath, PATHINFO_EXTENSION) === 'zip') {
+		if ( pathinfo( $fullPath, PATHINFO_EXTENSION ) === 'zip' ) {
 			$geslibReadFile = new GeslibApiReadFiles;
-			$filename = $geslibReadFile->unzipFile($fullPath);
+			$filename = $geslibReadFile->unzipFile( $fullPath );
 		}
 
-		$lines = file($this->mainFolderPath.$filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		$lines = file( $fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
 		$batch_size = 2000; // Choose a reasonable batch size
-		$queue = get_option('geslib_queue', []);
-
+		$queue = get_option( 'geslib_queue', [] );
 		$batch = [];
 
 		foreach ($lines as $line) {
-			if( !$this->isInProductKey($line) ) continue;
+			$line = $this->sanitizeLine( $line );
+			if( $this->isUnnecessaryLine( $line ) ) continue;
+			if( !$this->isInProductKey( $line ) ) continue;
+			if( $this->isInEditorials( $line )) continue;
 			$item = [
-				'line' => $this->sanitizeLine($line),
+				'line' => $line,
 				'log_id' => $log_id,
 				'type' => 'store_lines'  // type to identify the task in processQueue
 			];
 			$batch[] = $item;
 
 			if (count($batch) >= $batch_size) {
-				$queue = array_merge($queue, $batch);
-				update_option('geslib_queue', $queue);
+				$queue = array_merge( $queue, $batch );
+				update_option( 'geslib_queue', $queue );
 				$batch = [];
 			}
 		}
 		// Don't forget the last batch
-		if (!empty($batch)) {
-			$queue = array_merge($queue, $batch);
-			update_option('geslib_queue', $queue);
+		if ( !empty( $batch ) ) {
+			$queue = array_merge( $queue, $batch );
+			update_option( 'geslib_queue', $queue );
 		}
 
     	return 'File ' . $path . ' has been read with ' . count( $lines ) . ' lines';
@@ -206,15 +235,7 @@ class GeslibApiLines {
 		return $sanitized_line;
 	}
 
-	public function isInProductKey($line) {
-		$line_items = explode('|', $line);
-		var_dump($line_items);
-		if (is_array($line_items) && in_array($line_items[0], self::$lineTypes)){
-			return implode('|', $line_items);
-		} else {
-			return false;
-		}
-	}
+
 
 	/**
 	 * readFile
@@ -261,18 +282,19 @@ class GeslibApiLines {
 	 * //"type" | "action" | "geslib_id" |	"description" |	"author" | "pvp_ptas" |	"isbn" | "ean" |"num_paginas" |	"num_edicion" |	"origen_edicion" |"fecha_edicion" |	"fecha_reedicion" |	"año_primera_edicion" |"año_ultima_edicion" |"ubicacion" |"stock" |	"materia" |	"fecha_alta" |	"fecha_novedad" |"Idioma" |	"formato_encuadernacion" |"traductor" |"ilustrador" |"colección" |"numero_coleccion" |"subtitulo" |	"estado" |	"tmr" |	"pvp" |	"tipo_de_articulo" |"clasificacion" |"editorial" |	"pvp_sin_iva" |	"num_ilustraciones" |"peso" |"ancho" |"alto" |		"fecha_aparicion" |	"descripcion_externa" |	"palabras_asociadas" |			"ubicacion_alternativa" |"valor_iva" |"valoracion" |"calidad_literaria" |	"precio_referencia" | "cdu" |"en_blanco" |"libre_1" |"libre_2" | 			"premiado" |"pod" | "distribuidor_pod" | "codigo_old" | "talla" |			"color" |"idioma_original" |"titulo_original" |	"pack" |"importe_canon" |	"unidades_compra" |"descuento_maximo"
 	 * // GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
 	 *
-	* @param  array $data
+	* @param  mixed $data
 	 * @param  int $log_id
 	 * @return void
 	 */
 	private function processGP4( array $data, int $log_id ) {
-		if( in_array( $data[1], ['A','M'] ) ) {
-			$content_array = array_combine( self::$productKeys, $data );
-			$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-		} elseif ($data[1] == 'B' ){
-			// Delete
-			$content_array = array_combine( self::$productDeleteKeys, $data );
+		if ($data[1] === 'B') {
+			$keys = self::$productDeleteKeys;
+		} elseif (in_array($data[1], ['A', 'M'])) {
+			$keys = self::$productKeys;
 		}
+		if (! isset($keys)) return false;
+		$content_array = array_combine($keys, $data);
+		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
 		$this->db->insertData( $content_array, $data[1], $log_id, 'product' );
 	}
 
@@ -286,38 +308,37 @@ class GeslibApiLines {
 		$this->mergeContent( $geslib_id, $content_array, 'product');
 	}
 
-	private function process6TE($data, $log_id) {
+	private function process6TE(mixed $data, int $log_id) {
 		// Procesa las líneas 6TE aquí
 	}
 
-	private function process1L($data, $log_id) {
+	private function process1L(array $data, int $log_id) {
 		//1L|B|codigo_editorial
 		//1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
 		//1L|A|1|VARIAS|VARIAS|ES|
-		if (in_array($data[1],['A','M'] )){
-			// Insert or Update
-			$this->insert2Gesliblines($data[2], $log_id, 'editorial', $data[1], $data[3]);
-		} else if ($data[1] == 'B' ){
-			// Delete
-
+		if ($data[1] === 'B') {
+			$keys = self::$editorialDeleteKeys;
+		} elseif (in_array($data[1], ['A', 'M'])) {
+			$keys = self::$editorialKeys;
 		}
+		if (! isset($keys)) return false;
+		$content_array = array_combine($keys, $data);
+		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
+		$this->db->insertData( $content_array, $data[1], $log_id , 'editorial');
 	}
 
 	private function process3( $data, $log_id ) {
 		//Add categories
 		//3|A|01|Cartes|||
-		if( in_array( $data[1],['A','M'] ) ) {
-			//insert or update
-
-			$this->insert2GeslibLines(
-								$data[2],
-								$log_id,
-								'product_cat',
-								$data[1],
-								$this->geslibApiSanitize->utf8_encode($data[3]));
-		} else if ( $data[1] == 'B' ) {
-			//delete
+		if ($data[1] === 'B') {
+			$keys = self::$categoriaDeleteKeys;
+		} elseif (in_array($data[1], ['A', 'M'])) {
+			$keys = self::$categoriaKeys;
 		}
+		if ( !isset($keys)) return false;
+		$content_array = array_combine( $keys, $data );
+		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
+		$this->db->insertData( $content_array, $data[1], $log_id , 'product_cat');
 	}
 
 	private function process5( $data, $log_id ) {
@@ -330,7 +351,6 @@ class GeslibApiLines {
 				array_push( $content_array['categories'], [ $data[1] => $data[2] ] );
 			else
 				$content_array['categories'][$data[1]] = $data[2];
-				//$content_array['categories'][$data[1]]['geslib_id'] = $data[2];
 
 			$this->mergeContent($geslib_id, $content_array, 'product', $log_id);
 		}
@@ -381,7 +401,12 @@ class GeslibApiLines {
 	 * @param  array $data
 	 * @return void
 	 */
-	private function insert2Gesliblines( int $geslib_id, int $log_id, string $type, string $action, array $data = null ) {
+	private function insert2Gesliblines(
+			int $geslib_id,
+			int $log_id,
+			string $type,
+			string $action,
+			mixed $data = null ) {
 		$data_array = [
 			'log_id' => $log_id,
 			'geslib_id' => $geslib_id,
@@ -407,40 +432,75 @@ class GeslibApiLines {
 
 		//1. Get the content given the $geslib_id
 		$original_content = $this->db->fetchContent( $geslib_id, $type );
-		$original_content_array = json_decode( $original_content, true);
-		if ( !$original_content ) {
-			$content = json_encode( $original_content_array );
-			$data_array = [
-				'log_id' => $log_id,
-				'geslib_id' => $geslib_id,
-				'entity' => $type,
-				'action' => $action,
-				'content' => $content,
-				'queued' => 1
-			];
-			$this->db->insert2GeslibLines( $data_array );
-			return "Hemos creado una nueva entrada";
-		}
+		if ( !$original_content ) return "error at Merge Content";
 
-		if(isset( $original_content_array['categories']) && count($original_content_array['categories'] ) > 0) {
+		$original_content_array = json_decode( $original_content, true);
+		if (
+			isset( $original_content_array['categories'] )
+			&& count( $original_content_array['categories'] ) > 0
+			) {
+				$original_content_array['categories'] = array_merge( $original_content_array['categories'], $new_content_array['categories'] );
 			array_push( $original_content_array['categories'], $new_content_array['categories'] );
 			//$original_content_array = $new_content_content;
-		} else {
-			$content_array = array_merge( $original_content_array, $new_content_array );
-		}
+		} elseif ( isset( $new_content_array['categories'] ) ) {
+			$original_content_array['categories'] = $new_content_array['categories'];
+		};
 
 		$fields = ['sinopsis','biografia'];
 		foreach( $fields as $field ) {
-			if ( !isset($original_content_array[$field])
-			&& isset($new_content_array[$field])) {
+			if ( !isset( $original_content_array[$field] )
+			&& isset( $new_content_array[$field] )) {
 				$original_content_array[$field] = $new_content_array[$field];
 			}
 		}
 
-		$original_content = json_encode( $original_content_array );
-		if ( ! $original_content ) return FALSE;
+		$content = json_encode($original_content_array);
+		if ( ! $content ) return FALSE;
 
-		$this->db->updateGeslibLines( $geslib_id, $type, $original_content );
+		$this->db->updateGeslibLines( $geslib_id, $type, $content );
+	}
+
+	/**
+	 * unnecessaryLine
+	 *
+	 * @param  mixed $line
+	 * @return boolean
+	 */
+	public function isUnnecessaryLine(string $line) :bool {
+		return strpos($line, '< Genérica >') !== false;
+	}
+
+	public function isInEditorials( string $line ) :bool {
+		// $line = 1L|A|216|AGUILAR
+		$line_items = explode( '|', $line );
+		if( $line_items[0] == '1L' && $line_items[1] == 'A' ) {
+			$terms = get_terms([
+				'taxonomy'   => 'editorials', // replace with your actual taxonomy name
+				'hide_empty' => false,
+				'meta_query' => [
+					[
+						'key'     => 'geslib_id',
+						'value'   => $line_items[2],
+						'compare' => '=',
+					],
+				],
+			]);
+			var_dump($terms);
+
+			// If term with geslib_id found, return true
+			if (!empty($terms) && !is_wp_error($terms)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	public function isInProductKey($line) {
+		$line_items = explode('|', $line);
+		if (is_array($line_items) && in_array($line_items[0], self::$lineTypes)){
+			return implode('|', $line_items);
+		} else {
+			return false;
+		}
 	}
 
 }

@@ -128,9 +128,8 @@ class GeslibStoreProductsFormController extends BaseController
      */
     public function ajaxHandleLogUnqueue() {
         check_ajax_referer('geslib_log_queue', 'geslib_log_queue_nonce');
-        //$task_id = $this->enqueueTask('geslib_log_queue');
-        $geslibApiDb = new GeslibApiDb;
-        $geslibApiDb->setLogStatus( $log_id, 'logged' );
+        $geslibApiDbManager = new GeslibApiDbManager;
+        $geslibApiDbManager->setLogStatus( $_POST['log_id'], 'logged' );
         update_option( 'geslib_admin_notice', 'Geslib Log unqueued');
         wp_send_json_success( [ 'message' => 'Geslib Log unqueued' ]);
     }
@@ -182,21 +181,28 @@ class GeslibStoreProductsFormController extends BaseController
     }
     public function ajaxHandleDeleteProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $task_id = $this->enqueueTask('delete_products');
+        /* $task_id = $this->enqueueTask('delete_products'); */
+        $geslibApiDbManager = new GeslibApiDbManager;
+        $geslibApiDbManager->deleteAllProducts();
         update_option( 'geslib_admin_notice', 'Geslib Products Deleted' );
         wp_send_json_success( ['message' => 'Deletion task has been queued', 'task_id' => $task_id] );
     }
     public function ajaxHandleTruncateLines(){
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->truncateGeslibLines();
-        update_option( 'geslib_admin_notice', 'Geslib Products Deleted' );
+        if( !$geslibApiDbManager->truncateGeslibLines()) {
+            update_option('geslib_admin_notice', 'ERROR: Geslib Lines NOT Truncated');
+            wp_send_json_success(['message' => 'ERROR: Geslib Lines NOT Truncated']);
+        }
+
+        update_option( 'geslib_admin_notice', 'Geslib Lines Deleted' );
+        wp_send_json_success( [ 'message' => 'Geslib lines was deleted.' ] );
     }
 
     public function ajaxHandleEmptyQueue(){
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        update_option('geslib_queue', serialize([]));
-        p_send_json_success( [ 'message' => 'Remove queue' ] );
+        update_option('geslib_queue', []);
+        wp_send_json_success( [ 'message' => 'Remove queue' ] );
     }
 
     public function displayAdminNotice() {

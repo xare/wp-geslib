@@ -23,7 +23,8 @@ async function showAlert( actionType, buttonValue, buttonMessage ) {
 async function makeAjaxRequest( action, additionalData = null ) {
     const formData = new FormData();
     formData.append('action', action);
-
+    console.info(formData);
+    console.info(additionalData);
     if( additionalData ) {
         for (const [key, value] of Object.entries( additionalData )) {
             formData.append( key, value );
@@ -31,17 +32,14 @@ async function makeAjaxRequest( action, additionalData = null ) {
     } else {
         formData.append('geslib_nonce', document.querySelector("#geslib_nonce").value);
     }
-    console.table( formData );
     const response = await fetch( ajaxurl, {
         method: "POST",
         credentials: "same-origin",
         body: formData
     });
-    console.info(response);
+    console.info( response );
     try {
-        console.info(response);
         const jsonResponse = await response.json();
-        console.table(jsonResponse);
         if (jsonResponse.success) {
             return jsonResponse;
         } else {
@@ -85,13 +83,15 @@ document.addEventListener("DOMContentLoaded", function() {
     const actions = [
         { buttonName: 'store_products', action: 'geslib_store_products', type: 'store' },
         { buttonName: 'delete_products', action: 'geslib_delete_products', type: 'delete' },
-        { buttonName: 'hello_world', action: 'geslib_hello_world', type: '' },
-        { buttonName: 'check_file', action: 'geslib_check_file', type: '' },
-        { buttonName: 'store_log', action: 'geslib_store_log', type: '' },
-        { buttonName: 'store_lines', action: 'geslib_store_lines', type: '' },
-        { buttonName: 'store_categories', action: 'geslib_store_categories', type: '' },
-        { buttonName: 'store_editorials', action: 'geslib_store_editorials', type: '' },
-        { buttonName: 'truncate_log', action: 'geslib_truncate_log', type: '' },
+        { buttonName: 'hello_world', action: 'geslib_hello_world', type: 'store' },
+        { buttonName: 'check_file', action: 'geslib_check_file', type: 'store' },
+        { buttonName: 'store_log', action: 'geslib_store_log', type: 'store' },
+        { buttonName: 'store_lines', action: 'geslib_store_lines', type: 'store' },
+        { buttonName: 'store_categories', action: 'geslib_store_categories', type: 'store' },
+        { buttonName: 'store_editorials', action: 'geslib_store_editorials', type: 'store' },
+        { buttonName: 'truncate_log', action: 'geslib_truncate_log', type: 'delete' },
+        { buttonName: 'truncate_lines', action: 'geslib_truncate_lines', type: 'delete' },
+        { buttonName: 'empty_queue', action: 'geslib_empty_queue', type: 'delete'}
     ];
 
     actions.forEach( async ({ buttonName, action, type }) => {
@@ -109,6 +109,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     document.getElementById( "geslibLogQueueProcess" ).addEventListener( "click", async function( event ) {
         event.preventDefault();
+        let button = event.target;
 
         const additionalData = {
             'log_id': event.target.dataset.logId,
@@ -116,10 +117,9 @@ document.addEventListener("DOMContentLoaded", function() {
         };
         const action = event.target.dataset.action ;
         const data = await makeAjaxRequest( `geslib_log_${action}`, additionalData );
-
         if ( data.success ) {
-            event.target.dataset.action = 'unqueue';
-            event.target.textContent = 'Unqueue';
+            button.textContent = (button.dataset.action == 'queue')? 'Unqueue': 'Queue';
+            button.dataset.action = (button.dataset.action == 'queue')? 'unqueue' : 'queue';
             event.target.closest( 'tr' ).querySelectorAll( 'td' ).forEach( td => {
                 if ( td.textContent === 'logged' ) {
                     td.textContent = 'queued';

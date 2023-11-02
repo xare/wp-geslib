@@ -65,12 +65,16 @@ class GeslibStoreProductsCommand {
     public function processStoreProducts() {
       $queue = get_option('geslib_queue', []);
       $newQueue = [];
-      $geslibDbManager = new GeslibDbManager;
+      $geslibApiDbManager = new GeslibApiDbManager;
       foreach ($queue as $index => $task) {
         if ($task['type'] === 'store_products') {
-          WP_CLI::line("Processing product for Geslib ID: {$task['geslib:id']}");
-          $geslibDbManager->storeProduct($task['geslib_id'], $task['content']);
-          WP_CLI::line("Processed product with log_id: {$task['geslib_id']}");
+          WP_CLI::line("Processing product for Geslib ID: {$task['geslib_id']}");
+          if($task['action'] != 'B')
+            $geslibApiDbManager->storeProduct($task['geslib_id'], $task['content']);
+          else {
+            $geslibApiDbManager->deleteProduct($task['geslib_id']);
+          }
+          WP_CLI::line("Processed product with geslib_id: {$task['geslib_id']}");
         }
       }
     }

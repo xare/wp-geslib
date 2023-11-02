@@ -391,33 +391,7 @@ class GeslibApiLines {
 		$this->mergeContent( $data[1], $data[2], 'autor');
 	}
 
-	/**
-	 * insert2Gesliblines
-	 *
-	 * @param  int $geslib_id
-	 * @param  int $log_id
-	 * @param  string $type
-	 * @param  string $action
-	 * @param  array $data
-	 * @return void
-	 */
-	private function insert2Gesliblines(
-			int $geslib_id,
-			int $log_id,
-			string $type,
-			string $action,
-			mixed $data = null ) {
-		$data_array = [
-			'log_id' => $log_id,
-			'geslib_id' => $geslib_id,
-			'entity' => $type,
-			'action' => $action,
-			'content' => $data,
-			'queued' => 1
-		];
 
-		$this->db->insert2GeslibLines( $data_array );
-	}
 	/**
 	 * mergeContent
 	 * this function is called when the product has been created but we need to add more data to its content json string

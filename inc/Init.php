@@ -2,6 +2,7 @@
 
 namespace Inc\Geslib;
 
+use Inc\Geslib\Base\WooCommerce_Customizations;
 use Inc\Geslib\Base\Enqueue;
 use Inc\Geslib\Base\GeslibEditorialController;
 use Inc\Geslib\Base\GeslibHelloController;
@@ -52,7 +53,8 @@ final class Init
       GeslibEditorialController::class,
       GeslibStoreProductsFormController::class,
       Enqueue::class,
-      Dashboard::class
+      Dashboard::class,
+      WooCommerce_Customizations::class
     ];
   }
 

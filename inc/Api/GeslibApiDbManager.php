@@ -343,6 +343,7 @@ class GeslibApiDbManager {
 				$item = [
 					'geslib_id' => $line->geslib_id,
 					'content' => $line->content,
+					'action' => $line->action,
 					'type' => 'store_products'  // type to identify the task in processQueue
 				];
 				$queue[] = $item;
@@ -379,7 +380,8 @@ class GeslibApiDbManager {
 		$num_paginas = $content['num_paginas'];
 		$editorial_geslib_id = $content['editorial'];
 		$book_name = $content['description'];
-		$peso = $content['peso'];
+		$peso = $content['peso']/1000;
+		$book_description = '';
 
 		if ( isset( $content['sinopsis'] ) )
 			$book_description = $content['sinopsis'];
@@ -482,6 +484,39 @@ class GeslibApiDbManager {
 		}
 		return $product_id;
     }
+
+	public function deleteProduct($geslib_id) {
+		$args = array(
+			'post_type'      => 'product',
+			'posts_per_page' => -1,
+			'meta_query'     => array(
+				array(
+					'key'   => 'geslib_id',
+					'value' => $geslib_id,
+				),
+			),
+		);
+		$query = new WP_Query( $args );
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$post_id = get_the_ID();
+
+				// Using WooCommerce CRUD functions to delete product
+				$product = wc_get_product( $post_id );
+				$product->delete( true );
+
+				// Alternatively, you could use wp_delete_post,
+				// but the WooCommerce way ensures all related meta and terms are cleaned up
+				// wp_delete_post( $post_id, true );
+			}
+
+			wp_reset_postdata();
+		} else {
+			return 'No products found with the given geslib_id';
+		}
+	}
+
     public function storecategory($geslib_id,$content){}
     public function storeauthor($geslib_id,$content){}
 

@@ -194,4 +194,50 @@ class GeslibApiReadFiles {
 		else
 			return false; // Return false if file not found
 	}
+
+	public function countLinesWithGP4($filename) {
+		// Check if the file exists
+		if (!file_exists($filename)) {
+			return false; // Return false if file not found
+		}
+
+		// Initialize the counts to 0
+		$counts = [
+			'total' => 0,
+			'GP4A' => 0,
+			'GP4M' => 0,
+			'GP4B' => 0
+		];
+
+		$handle = fopen($filename, "r"); // Open the file for reading
+		// Read line by line
+		while (($line = fgets($handle)) !== false) {
+			// Check if the line starts with "GP4"
+			if (substr($line, 0, 3) === "GP4") {
+				$counts['total']++; // Increment total GP4 lines count
+
+				// Check the second part after "GP4|"
+				$parts = explode('|', $line);
+				if (count($parts) > 1) {
+					switch ($parts[1]) {
+						case 'A':
+							$counts['GP4A']++;
+							break;
+						case 'M':
+							$counts['GP4M']++;
+							break;
+						case 'B':
+							$counts['GP4B']++;
+							break;
+					}
+				}
+			}
+		}
+
+		fclose($handle); // Close the file handle
+
+		return $counts; // Return the counts
+	}
+
+
 }

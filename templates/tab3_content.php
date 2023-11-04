@@ -1,46 +1,97 @@
-<?php
-    global $wpdb;
-
-    $table_name = $wpdb->prefix .'geslib_log';
-    $query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
-    $results = $wpdb->get_results($query, ARRAY_A);
-?>
-
 <div class="table-container">
-    <?php if (!empty($results)) : ?>
-        <form method="post" action="#tab-3" id="geslibLogQueueProcess">
-        <?php wp_nonce_field('geslib_log_queue', 'geslib_log_queue_nonce'); ?>
-        <table class="geslib-table">
-            <thead>
-                <tr>
-                    <?php foreach ($results[0] as $column => $value) : ?>
-                        <th><?php echo esc_html($column); ?></th>
-                    <?php endforeach; ?>
-                    <th> Acciones </th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($results as $row) : ?>
-                <tr>
-                    <?php foreach ($row as $value) : ?>
-                        <?php
-                            $logged = ( $row['status'] !== 'logged' ) ? false : true;
-                        ?>
-                        <td><?php echo esc_html($value); ?></td>
-                    <?php endforeach; ?>
-                    <td>
-                        <?php if ($logged === true) : ?>
-                            <button class="button delete" name="queue" data-action="queue" data-log-id="<?php echo $row["id"]; ?>">Queue</button>
-                        <?php else: ?>
-                            <button class="button delete" name="unqueue" data-action="unqueue" data-log-id="<?php echo $row["id"]; ?>">Unqueue</button>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        </form>
-    <?php else : ?>
-        <p>No se han encontrado datos.</p>
-    <?php endif; ?>
+    <?php
+
+use Inc\Geslib\Api\GeslibApiReadFiles;
+
+        $mainFolderPath = WP_CONTENT_DIR . '/uploads/' . get_option('geslib_settings')['geslib_folder_index'] .'/';
+    ?>
+    <h1> Archivos en la carpeta de geslib </h1>
+    <ul>
+        <li>A: Añadir</li>
+        <li>M: Modificar</li>
+        <li>B: Borrar</li>
+        <li>GP4 : Productos</li>
+        <li>1L: Editoriales</li>
+        <li>3: Categorías</li>
+    </ul>
+    <?php
+        $files = glob($mainFolderPath . 'INTER*');
+        // Get file modification time
+        $modTime = filemtime($file);
+        // Format the date and time
+        $formattedModTime = date('d/m/Y H:i', $modTime);
+        $geslibApiReadFiles = new GeslibApiReadFiles;
+
+    ?>
+    <table class="geslib-table">
+        <thead>
+            <tr>
+                <td>
+                    <span class="dashicons dashicons-format-aside"></span>
+                    <strong>Nombre del archivo</strong>
+                </td>
+                <td>
+                    <span class="dashicons dashicons-clock"></span>
+                    <strong>Fecha de creación</strong>
+                </td>
+                <td>
+                    <span class="dashicons dashicons-info-outline"></span>
+                    <strong>Memoria</strong>
+                </td>
+                <td>
+                    <span class="dashicons dashicons-info-outline"></span>
+                    <strong>Número de Lineas</strong>
+                </td>
+                <td>GP4 A</td>
+               <td>GP4 M</td>
+               <td>GP4 B</td>
+            </tr>
+        </thead>
+        <?php
+        foreach( $files as $file ) :
+            // Get file modification time
+            $modTime = filemtime($file);
+            // Format the date and time
+            $formattedModTime = date('d/m/Y H:i', $modTime);
+            // Get file size and format it
+            $formattedSize = formatSize(filesize($file));
+
+            $countLines = $geslibApiReadFiles->countLines($file);
+            $gp4Counts = $geslibApiReadFiles->countLinesWithGP4($file);
+
+            ?>
+            <tr>
+                <td>
+                    <?php echo basename($file) ; ?>
+                </td>
+                <td>
+                    <span><?php echo $formattedModTime; ?></span>
+                </td>
+                <td>
+                    <span><?php echo $formattedSize; ?></span>
+                </td>
+                <td>
+                    <span><?php echo $countLines; ?></span>
+                </td>
+                <td>
+                    <span><?php echo $gp4Counts['GP4A'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $gp4Counts['GP4M'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $gp4Counts['GP4B'] ;?></span>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    </table>
 </div>
+
+<?php
+// Function to format the file size
+function formatSize($bytes) {
+    $types = array( 'B', 'KB', 'MB', 'GB', 'TB' );
+    for($i = 0; $bytes >= 1024 && $i < (count($types) - 1); $bytes /= 1024, $i++);
+    return( round($bytes, 2) . " " . $types[$i] );
+}
+?>

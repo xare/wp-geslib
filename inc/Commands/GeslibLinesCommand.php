@@ -55,35 +55,17 @@ class GeslibLinesCommand {
         WP_CLI::line( 'Data has not been saved to geslib_lines!' );
     }
 
-    public function processStoreLines() {
-        $queue = get_option('geslib_queue', []);
-        //var_dump($queue);
-        $newQueue = [];  // To hold tasks that are not of type 'store_lines'
-        $geslibApiLines = new GeslibApiLines();
-        foreach ($queue as $index => $task) {
-            if ($task['type'] === 'store_lines') {
-                // Process the task
-                WP_CLI::line("Processsing line: {$task['line']}");
-                $geslibApiLines->readLine($task['line'], $task['log_id']);
-                WP_CLI::line("Processed task with log_id: {$task['log_id']}");
-
-                // Fetch the latest queue
-                $latestQueue = get_option('geslib_queue', []);
-                // Remove the processed task
-                unset($latestQueue[$index]);
-                // Re-index array keys
-                $latestQueue = array_values($latestQueue);
-                // Update the WordPress option with the new queue
-                update_option('geslib_queue', $latestQueue);
-            } else {
-                // Keep the task in the queue for later
-                $newQueue[] = $task;
-            }
-        }
-
-        // Update the queue with remaining tasks
-        update_option('geslib_queue', $newQueue);
-
-        WP_CLI::success('Processed all tasks of type "store_lines".');
+    public function processStoreLines( ) {
+        $geslibApiDb = new GeslibApiDbManager();
+        $geslibApiDb->processFromQueue('store_lines');
     }
+
+
+
+   /*  function deleteProcessed( $processedIds ) {
+        global $wpdb;
+        $tableName = $wpdb->prefix . 'geslib_queues';
+        $idList = implode( ',', array_map( 'intval', $processedIds ) );
+        $wpdb->query( "DELETE FROM `$tableName` WHERE `id` IN ( $idList )" );
+    } */
 }

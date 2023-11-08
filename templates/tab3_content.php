@@ -1,8 +1,10 @@
-<div class="table-container">
-    <?php
+<?php
 
 use Inc\Geslib\Api\GeslibApiReadFiles;
 
+?>
+<div class="table-container">
+    <?php
         $mainFolderPath = WP_CONTENT_DIR . '/uploads/' . get_option('geslib_settings')['geslib_folder_index'] .'/';
     ?>
     <h1> Archivos en la carpeta de geslib </h1>
@@ -10,18 +12,14 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
         <li>A: Añadir</li>
         <li>M: Modificar</li>
         <li>B: Borrar</li>
-        <li>GP4 : Productos</li>
+        <li>GP4: Productos</li>
         <li>1L: Editoriales</li>
         <li>3: Categorías</li>
     </ul>
     <?php
         $files = glob($mainFolderPath . 'INTER*');
-        // Get file modification time
-        $modTime = filemtime($file);
-        // Format the date and time
-        $formattedModTime = date('d/m/Y H:i', $modTime);
-        $geslibApiReadFiles = new GeslibApiReadFiles;
 
+        $geslibApiReadFiles = new GeslibApiReadFiles;
     ?>
     <table class="geslib-table">
         <thead>
@@ -43,12 +41,19 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
                     <strong>Número de Lineas</strong>
                 </td>
                 <td>GP4 A</td>
-               <td>GP4 M</td>
-               <td>GP4 B</td>
+                <td>GP4 M</td>
+                <td>GP4 B</td>
+                <td>1L A</td>
+                <td>1L M</td>
+                <td>1L B</td>
+                <td>3 A</td>
+                <td>3 M</td>
+                <td>3 B</td>
             </tr>
         </thead>
         <?php
         foreach( $files as $file ) :
+            if( !isset( $file ) || $file === '' ) continue;
             // Get file modification time
             $modTime = filemtime($file);
             // Format the date and time
@@ -57,8 +62,7 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
             $formattedSize = formatSize(filesize($file));
 
             $countLines = $geslibApiReadFiles->countLines($file);
-            $gp4Counts = $geslibApiReadFiles->countLinesWithGP4($file);
-
+            $lineCounts = $geslibApiReadFiles->countLinesWithGP4($file);
             ?>
             <tr>
                 <td>
@@ -74,13 +78,31 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
                     <span><?php echo $countLines; ?></span>
                 </td>
                 <td>
-                    <span><?php echo $gp4Counts['GP4A'] ;?></span>
+                    <span><?php echo $lineCounts['GP4A'] ;?></span>
                 </td>
                 <td>
-                    <span><?php echo $gp4Counts['GP4M'] ;?></span>
+                    <span><?php echo $lineCounts['GP4M'] ;?></span>
                 </td>
                 <td>
-                    <span><?php echo $gp4Counts['GP4B'] ;?></span>
+                    <span><?php echo $lineCounts['GP4B'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $lineCounts['1LA'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $lineCounts['1LM'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $lineCounts['1LB'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $lineCounts['3A'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $lineCounts['3M'] ;?></span>
+                </td>
+                <td>
+                    <span><?php echo $lineCounts['3B'] ;?></span>
                 </td>
             </tr>
         <?php endforeach; ?>

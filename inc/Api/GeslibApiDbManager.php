@@ -9,6 +9,7 @@ use WP_Query;
 class GeslibApiDbManager {
 	const GESLIB_LINES_TABLE = 'geslib_lines';
 	const GESLIB_LOG_TABLE = 'geslib_log';
+	const GESLIB_QUEUES_TABLE = 'geslib_queues';
 	static $geslibLinesKeys = [
 		'log_id', // int relation oneToMany with geslib_log
 		'geslib_id', // int
@@ -324,12 +325,13 @@ class GeslibApiDbManager {
 	public function storeProducts() {
 		global $wpdb;
 		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$queueTable = $wpdb->prefix.self::GESLIB_QUEUES_TABLE;
 		// Create a queue for storing products.
         $actions = [
-            'A', 'M', // Add and Modify
-            'B'       // Delete
+            'A', // Add
+			'M', // Modify
+            'B'  // Delete
         ];
-		$queue = get_option('geslib_queue', []);
 
 		foreach ($actions as $actionSet) {
 			$query = $wpdb->prepare(
@@ -340,14 +342,15 @@ class GeslibApiDbManager {
 			//if ( count( $lines ) == 0) return FALSE;
 
 			foreach ($lines as $line){
+				var_dump($line);
 				$item = [
 					'geslib_id' => $line->geslib_id,
-					'content' => $line->content,
-					'action' => $line->action,
+					'log_id' => $line->log_id,
+					'data' => $line->content,
+					//'action' => $line->action,
 					'type' => 'store_products'  // type to identify the task in processQueue
 				];
-				$queue[] = $item;
-				update_option( 'geslib_queue' , $queue);
+				$wpdb->insert($queueTable, $item); // Directly insert into the database queue
 			}
 		}
 		/* $totalLines = $this->_getTotalLinesProducts();
@@ -382,7 +385,7 @@ class GeslibApiDbManager {
 		$book_name = $content['description'];
 		$peso = $content['peso']/1000;
 		$book_description = '';
-
+		error_log($geslib_id);
 		if ( isset( $content['sinopsis'] ) )
 			$book_description = $content['sinopsis'];
 		$book_price = floatval(str_replace(',', '.', $content['pvp']));
@@ -421,6 +424,7 @@ class GeslibApiDbManager {
 		$product->set_price($book_price);
 		$product->set_regular_price($book_price);
 		$product->set_weight($peso);
+
 		// ... Set other product properties
 
 		// Save the product to the database and get its ID
@@ -432,7 +436,7 @@ class GeslibApiDbManager {
 		if(isset($author))
 			update_post_meta($product_id, '_author', $author);
 
-
+		update_post_meta($product_id, 'geslib_id', $geslib_id);
 		// Get the integer value from the content array
 		$editorial_id = intval($content['editorial']);
 
@@ -457,8 +461,8 @@ class GeslibApiDbManager {
 		}
 
 		// APPEND CATEGORIES
-
-		if( $content['categories'] != null && count( $content['categories']) > 0 ) {
+		var_dump($content['categories']);
+		if( isset($content['categories']) && is_array($content['categories']) && count( $content['categories']) > 0 ) {
 			foreach ( $content['categories'] as $key => $value ) {
 				$category_id = intval($key);
 				// Get terms
@@ -466,9 +470,9 @@ class GeslibApiDbManager {
 					'taxonomy' => 'product_cat', // the taxonomy for the term
 					'hide_empty' => false, // also retrieve terms which are not used yet
 					'meta_query' => [
-							['key'       => 'category_geslib_id', // your meta key
-							'value'     => $category_id, // your meta value
-							'compare'   => '='],
+							['key'   => 'category_geslib_id', // your meta key
+							'value'  => $category_id, // your meta value
+							'compare'=> '='],
 						],
 					];
 
@@ -538,13 +542,13 @@ class GeslibApiDbManager {
 		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
 
 		$query = $wpdb->prepare(
-						"SELECT
-							content
-						FROM $table
-						WHERE
-							geslib_id = '%d'
-						AND
-							entity = '%s'",
+							"SELECT
+								content
+							FROM $table
+							WHERE
+								geslib_id = '%d'
+							AND
+								entity = '%s'",
 						$geslib_id, $type);
 		return $wpdb->get_var( $query );
 	}
@@ -693,7 +697,7 @@ class GeslibApiDbManager {
 	public function truncateGeslibLines() {
 		global $wpdb;
 		try {
-        	$wpdb->query( 'TRUNCATE TABLE '.$wpdb->prefix.self::GESLIB_LINES_TABLE )->execute();
+        	$wpdb->query( 'TRUNCATE TABLE '.$wpdb->prefix.self::GESLIB_LINES_TABLE );
 			return true;
 		} catch( \Exception $exception ) {
 			wp_error( 'Unable to truncate geslib_lines table' . $exception->getMessage() );
@@ -706,7 +710,18 @@ class GeslibApiDbManager {
 		try {
 			$wpdb->query( 'DELETE FROM ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' WHERE log_id IN (SELECT id FROM '.$wpdb->prefix.self::GESLIB_LOG_TABLE.')');
 			$wpdb->query( 'ALTER TABLE ' . $wpdb->prefix . self::GESLIB_LINES_TABLE . ' AUTO_INCREMENT = 1' );
+			$wpdb->query( 'SET FOREIGN_KEY_CHECKS=0;' );
 			$wpdb->query( 'TRUNCATE TABLE ' . $wpdb->prefix . self::GESLIB_LOG_TABLE );
+			$wpdb->query( 'SET FOREIGN_KEY_CHECKS=1;' );
+			if ( defined( 'SAVEQUERIES' ) && SAVEQUERIES ) {
+				global $wpdb;
+				if ( ! empty( $wpdb->queries ) ) {
+					foreach ( $wpdb->queries as $query ) {
+						// Log each query to the debug log
+						error_log( $query[0] );
+					}
+				}
+			}
 			return true;
 		} catch( \Exception $exception ) {
 			wp_error( 'Unable to truncate geslib_lines table' . $exception->getMessage() );
@@ -765,4 +780,86 @@ class GeslibApiDbManager {
 		return $wpdb->get_results( "SELECT filename, status FROM ".$wpdb->prefix.self::GESLIB_LOG_TABLE );
 	}
 
+	public function insertLinesIntoQueue($batch) {
+		global $wpdb;
+		$tableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+
+		foreach ($batch as $item) {
+			$wpdb->insert($tableName, $item);
+		}
+	}
+
+	public function deleteItemFromQueue( string $type, int $log_id, string $geslib_id ) {
+		global $wpdb;
+		$geslib_id = ( $geslib_id =='' )? '0':$geslib_id;
+		try {
+			$wpdb->delete(
+				$wpdb->prefix . self::GESLIB_QUEUES_TABLE,
+				[
+					'type' => $type,
+					'geslib_id' => $geslib_id,
+					'log_id' => $log_id
+				],
+				[
+					'%s', // placeholder for 'type'
+					'%s', // placeholder for 'geslib_id', assuming it's an integer
+					'%d'  // placeholder for 'log_id', assuming it's an integer
+				]
+			);
+			//echo "Deleted task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id}";
+		} catch(\Exception $exception) {
+			//echo "Failed to delete task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id} :".$exception->getMessage();
+		}
+	}
+
+	public function processFromQueue($type) {
+		global $wpdb;
+        $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+		if($type = 'store_lines') {
+			do {
+				$this->processBatchStoreLines( 10 );
+				// Get the count of remaining items in the queue
+				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
+				//echo 'queue count '.$queue_count.'/n' ;
+			} while ( $queue_count > 0 );
+		}
+	}
+	public function processBatchStoreLines( $batchSize = 10 ) {
+
+        $queue = $this->getBatchFromQueue( $batchSize, 'store_lines' );
+
+        // If there are no tasks, exit the function.
+
+        $geslibApiLines = new GeslibApiLines();
+        $processedIds = []; // Counter to keep track of processed tasks.
+        foreach ($queue as $task) {
+            // Process the task
+            //echo "Processing line: {$task->data}";
+            $geslibApiLines->readLine( $task->data, $task->log_id );
+            //echo "Processed task with log_id: {$task->log_id}";
+        }
+        //echo "Processed a batch of tasks.";
+    }
+
+	function getBatchFromQueue( $batchSize, $type ) {
+        global $wpdb;
+        $tableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+        $query = $wpdb->prepare( "SELECT * FROM `$tableName` WHERE type='$type' LIMIT %d", $batchSize );
+        return $wpdb->get_results( $query );
+    }
+
+	public function get_total_number_of_products() {
+		global $wpdb;
+
+		// Get the total number of products (excluding variations)
+		$total_products = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'product' AND post_status = 'publish'" );
+
+		// Get the total number of product variations (if needed)
+		$total_variations = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'product_variation' AND post_status = 'publish'" );
+
+		// Sum the products and variations if variations should be included in the total
+		$total = $total_products + $total_variations;
+
+		return $total;
+	}
 }

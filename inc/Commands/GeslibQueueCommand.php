@@ -34,24 +34,27 @@ class GeslibQueueCommand {
      * @when after_wp_load
      */
     public function clearQueue($args, $assoc_args) {
-        $queue = get_option('geslib_queue', []);
+        global $wpdb;
+        $queueTable = $wpdb->prefix . 'geslib_queues'; // Ensure to replace with your actual table name
 
-        $type = isset($args[0]) ? $args[0] : null;  // Get the type from the command arguments
-        $newQueue = [];
+        $type = isset($args[0]) ? $args[0] : null; // Get the type from the command arguments
 
         if ($type) {
-            foreach ($queue as $task) {
-                if ($task['type'] !== $type) {
-                    $newQueue[] = $task;
-                }
+            // Delete tasks of a specific type
+            $result = $wpdb->delete($queueTable, ['type' => $type]);
+            if ($result !== false) {
+                WP_CLI::success("Removed all tasks of type '{$type}' from the queue.");
+            } else {
+                WP_CLI::error("An error occurred while trying to remove tasks of type '{$type}' from the queue.");
             }
-             // Update the queue with remaining tasks
-            update_option('geslib_queue', $newQueue);
-            WP_CLI::success("Removed all tasks of type '{$type}' from the queue.");
         } else {
-             // Update the queue with remaining tasks
-            update_option('geslib_queue', $newQueue);
-            WP_CLI::success('Removed all tasks from the queue.');
+             // Delete all tasks
+            $result = $wpdb->query("DELETE FROM `{$queueTable}`");
+            if ($result !== false) {
+                WP_CLI::success('Removed all tasks from the queue.');
+            } else {
+                WP_CLI::error('An error occurred while trying to remove all tasks from the queue.');
+            }
         }
 
 

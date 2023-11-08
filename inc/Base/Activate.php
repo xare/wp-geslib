@@ -35,12 +35,13 @@ namespace Inc\Geslib\Base;
     /* status string read|queued|processed */
     /* lines int */
 
-    
+
     wp_mkdir_p( WP_CONTENT_DIR . '/uploads/geslib' );
 
     $charset_collate = $wpdb->get_charset_collate();
     $log_table_name = $wpdb->prefix . 'geslib_log';
     $lines_table_name = $wpdb->prefix . 'geslib_lines';
+    $queue_table_name = $wpdb->prefix. 'geslib_queues';
 
     $log_sql = "CREATE TABLE $log_table_name (
       id mediumint(9) unsigned NOT NULL AUTO_INCREMENT,
@@ -64,8 +65,19 @@ namespace Inc\Geslib\Base;
       FOREIGN KEY (log_id) REFERENCES $log_table_name(id)
           ) $charset_collate;";
 
+      $queue_sql = "CREATE TABLE $queue_table_name (
+        `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+        `log_id` mediumint(9) unsigned,
+        `geslib_id` text,
+        `type` varchar(255) NOT NULL,
+        `data` text,
+        PRIMARY KEY (`id`)
+      ) $charset_collate;
+      ";
+
       require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
       dbDelta( $log_sql );
       dbDelta( $lines_sql );
+      dbDelta( $queue_sql );
   }
  }

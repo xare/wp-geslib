@@ -10,17 +10,20 @@ class GeslibApiStoreData {
     }
 
     public function storeProductCategories() {
+        global $wpdb;
+        $queueTable = $wpdb->prefix . 'geslib_queues';
         $product_categories = $this->db->getProductCategoriesFromGeslibLines();
-        $queue = get_option('geslib_queue', []);
         foreach($product_categories as $product_category) {
             $item = [
                 'product_category' => $product_category,
-                'type' => store_categories,
+                'type' => 'store_categories',
             ];
-            $queue[] = $item;
+            // Directly insert into the database queue
+            $wpdb->insert($queueTable, $item);
         }
-        update_option('geslib_queue', $queue);
-        //$this->db->storeProductCategory($product_category);
+        // Return a status message indicating success or failure and/or count of categories added.
+        $totalAdded = count($product_categories);
+        return "Added $totalAdded product categories to the queue.";
     }
 
 

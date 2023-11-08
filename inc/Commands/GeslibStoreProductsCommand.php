@@ -63,18 +63,30 @@ class GeslibStoreProductsCommand {
      * @return void
      */
     public function processStoreProducts() {
-      $queue = get_option('geslib_queue', []);
-      $newQueue = [];
+      global $wpdb;
+      $table_name = $wpdb->prefix . 'geslib_queues';
+
       $geslibApiDbManager = new GeslibApiDbManager;
-      foreach ($queue as $index => $task) {
-        if ($task['type'] === 'store_products') {
-          WP_CLI::line("Processing product for Geslib ID: {$task['geslib_id']}");
-          if($task['action'] != 'B')
-            $geslibApiDbManager->storeProduct($task['geslib_id'], $task['content']);
-          else {
-            $geslibApiDbManager->deleteProduct($task['geslib_id']);
-          }
-          WP_CLI::line("Processed product with geslib_id: {$task['geslib_id']}");
+
+      // Select tasks of type 'store_products' that are pending
+      $pending_products = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT * FROM `$table_name` WHERE `type` = %s",
+            'store_products'
+        )
+      );
+      foreach ($pending_products as $index => $task) {
+        if ($task->type === 'store_products') {
+          WP_CLI::line("Processing product for Geslib ID: {$task->geslib_id}");
+          //if($task['action'] != 'B')
+            $geslibApiDbManager->storeProduct($task->geslib_id, $task->data);
+            $geslibApiDbManager->deleteItemFromQueue($task->type,$task->log_id,$task->geslib_id);
+            //delete from queue
+
+          //else {
+          //  $geslibApiDbManager->deleteProduct($task['geslib_id']);
+          //}
+          WP_CLI::line("Processed product with geslib_id: {$task->geslib_id}");
         }
       }
     }

@@ -123,12 +123,12 @@ class GeslibApiLines {
 		"EB", // eBooks (igual que los libros)
 		"IEB", // Información propia del eBook
 		"5", // Materias asociadas a los artículos
-		"BIC", // Materias IBIC asociadas a los artículos
+		//"BIC", // Materias IBIC asociadas a los artículos
 		"6", // Referencias de la librería
 		"6E", // Referencias del editor
 		"6I", // Índice del libro
 		"6T", // Referencias de la librería (traducidas)
-		"6TE", // Referencias del editor (traducidas)
+		//"6TE", // Referencias del editor (traducidas)
 		"6IT", // Índice del libro (traducido)
 		//"LA", // Autores normalizados asociados a un artículo
 		//"7", // Formatos de encuadernación
@@ -188,34 +188,38 @@ class GeslibApiLines {
 
 		$lines = file( $fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
 		$batch_size = 2000; // Choose a reasonable batch size
-		$queue = get_option( 'geslib_queue', [] );
 		$batch = [];
 
 		foreach ($lines as $line) {
+
+			$line_array = explode('|', $line);
+
+
 			$line = $this->sanitizeLine( $line );
 			if( $this->isUnnecessaryLine( $line ) ) continue;
 			if( !$this->isInProductKey( $line ) ) continue;
 			if( $this->isInEditorials( $line )) continue;
+
+			$index = (in_array($line_array[0],['6E', '6TE'])) ? 1 : 2;
+
 			$item = [
-				'line' => $line,
+				'data' => $line,
 				'log_id' => $log_id,
+				'geslib_id' => $line_array[$index],
 				'type' => 'store_lines'  // type to identify the task in processQueue
 			];
 			$batch[] = $item;
-
 			if (count($batch) >= $batch_size) {
-				$queue = array_merge( $queue, $batch );
-				update_option( 'geslib_queue', $queue );
+				$this->db->insertLinesIntoQueue($batch);
 				$batch = [];
 			}
 		}
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
-			$queue = array_merge( $queue, $batch );
-			update_option( 'geslib_queue', $queue );
+			$this->db->insertLinesIntoQueue($batch);
 		}
 
-    	return 'File ' . $path . ' has been read with ' . count( $lines ) . ' lines';
+    	return 'File ' . $filename . ' has been read with ' . count( $lines ) . ' lines';
 	}
 
 	public function sanitizeLine($line) {
@@ -236,29 +240,6 @@ class GeslibApiLines {
 	}
 
 
-
-	/**
-	 * readFile
-	 *
-	 * @param  string $path
-	 * @param  int $log_id
-	 * @return void
-	 */
-	/* private function readFile( string $path, int $log_id) {
-		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-		$queue = get_option('geslib_queue', []);
-		foreach ($lines as $line) {
-			$item = [
-				'line' => $line,
-				'log_id' => $log_id,
-				'type' => 'read_line'  // type to identify the task in processQueue
-			];
-			$queue[] = $item;
-		  }
-		  update_option('geslib_queue', $queue);
-    	return 'File ' . $path . ' has been read with ' . count($lines) . ' lines';
-	} */
-
 	/**
 	 * readLine
 	 *
@@ -269,12 +250,18 @@ class GeslibApiLines {
 	public function readLine( string $line, int $log_id ) :void {
 		$data = explode( '|', $line ) ;
 		array_pop($data);
+
 		if( in_array($data[0], self::$lineTypes ) ) {
+
 			$function_name = 'process' . $data[0];
+			error_log($function_name);
 			if ( method_exists( $this, $function_name ) ) {
 				$this->{$function_name}($data, $log_id);
 			}
+			$index = (in_array( $data[0] ,['6E', '6TE','BIC'])) ? 1 : 2;
+			$this->db->deleteItemFromQueue('store_lines', $log_id, $data[$index]);
 		}
+
 	}
 
 	/**
@@ -342,16 +329,16 @@ class GeslibApiLines {
 	}
 
 	private function process5( $data, $log_id ) {
-		//Add a category to to a
-		// “5”|Código de materia (varchar(12))|Código de articulo + SEPARADOR
-		//5|17|1|
+		// Add a category to to a product
+		// “5”|Código de categoría (varchar(12))|Código de producto|
+		// 5|17|1|
 		$geslib_id = $data[2];
-		if($data[1] !== '0') {
-			if( isset( $content_array['categories'] ) )
-				array_push( $content_array['categories'], [ $data[1] => $data[2] ] );
-			else
-				$content_array['categories'][$data[1]] = $data[2];
-
+		$content_array = [];
+		error_log('process 5');
+		if($data[1] !== 0 && $data[1] != '') {
+			error_log('process 5 inside');
+			$content_array['categories'][$data[1]] = $data[2];
+			error_log($content_array['categories'][$data[1]]);
 			$this->mergeContent($geslib_id, $content_array, 'product', $log_id);
 		}
 	}
@@ -401,21 +388,29 @@ class GeslibApiLines {
 	 * @param  string $type
 	 * @return mixed
 	 */
-	private function mergeContent( int $geslib_id, array $new_content_array, string $type, int $log_id = 0, string $action = '' ) {
+	private function mergeContent(
+						int $geslib_id,
+						array $new_content_array,
+						string $type,
+						int $log_id = 0,
+						string $action = '' ) {
 		//this function is called when the product has been created but we need to add more data to its content json string
 
 		//1. Get the content given the $geslib_id
 		$original_content = $this->db->fetchContent( $geslib_id, $type );
-		if ( !$original_content ) return "error at Merge Content";
+		if ( !$original_content ) return error_log("error at Merge Content");
 
 		$original_content_array = json_decode( $original_content, true);
 		if (
 			isset( $original_content_array['categories'] )
 			&& count( $original_content_array['categories'] ) > 0
 			) {
+				error_log('categoryMerge');
 				$original_content_array['categories'] = array_merge( $original_content_array['categories'], $new_content_array['categories'] );
-			array_push( $original_content_array['categories'], $new_content_array['categories'] );
-			//$original_content_array = $new_content_content;
+				error_log(print_r($original_content_array['categories']));
+				array_push( $original_content_array['categories'], $new_content_array['categories'] );
+				error_log('After push');
+				error_log(print_r($original_content_array));
 		} elseif ( isset( $new_content_array['categories'] ) ) {
 			$original_content_array['categories'] = $new_content_array['categories'];
 		};
@@ -424,6 +419,7 @@ class GeslibApiLines {
 		foreach( $fields as $field ) {
 			if ( !isset( $original_content_array[$field] )
 			&& isset( $new_content_array[$field] )) {
+
 				$original_content_array[$field] = $new_content_array[$field];
 			}
 		}
@@ -459,7 +455,7 @@ class GeslibApiLines {
 					],
 				],
 			]);
-			var_dump($terms);
+			//var_dump($terms);
 
 			// If term with geslib_id found, return true
 			if (!empty($terms) && !is_wp_error($terms)) {

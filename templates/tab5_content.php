@@ -5,7 +5,8 @@
         $query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
         $results = $wpdb->get_results($query, ARRAY_A);
       ?>
-
+<h3> Tabla de lineas</h3>
+<p>Esta tabla contiene las lineas contenidas en cada archivo. Se llena con un solo archivo y se vacía una vez estas lineas han sido enviadas a la cola de proceso.</p>
       <div class="table-container">
           <?php if (!empty($results)) :
               $results_per_page = 30; // Number of results to display per page

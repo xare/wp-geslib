@@ -20,23 +20,46 @@ class GeslibApiReadFiles {
         $this->db = new GeslibApiDbManager();
     }
 
+	/**
+	 * readFolder
+	 *
+	 * @return void
+	 */
 	public function readFolder(){
+		$files = glob( $this->mainFolderPath . 'INTER*' );
+		$zipFolder = $this->mainFolderPath . 'zip/';
+		// Check if the zip folder exists, if not create it
+		// The true parameter allows the creation of nested directories as needed
+		if ( !is_dir($zipFolder) ) mkdir($zipFolder, 0755, true);
 
-		$files = glob($this->mainFolderPath . 'INTER*');
-
-		foreach($files as $file) {
-			if (is_file($file)) {
-				$filename = basename($file);
-				var_dump($filename);
-                $linesCount = count(file($file));
-				// Check if the filename already exists in the database
-                if (!$this->db->isFilenameExists($filename)) {
-					$this->db->insertLogData($filename, 'logged', $linesCount);
+		foreach( $files as $file ) {
+			$fileInfo = pathinfo( $file );
+			if ( isset( $fileInfo['extension'] )) {
+				//is a zip file. Will first decompress it and then take the decompressed file to the geslib log
+				// Initialize the ZipArchive class
+				$zip = new ZipArchive();
+				if ( $zip->open($file) === TRUE ) {
+					// Extract the files to the mainFolderPath
+					$zip->extractTo( $this->mainFolderPath );
+					// Insert into geslib_log if not already
+					$this->insert2geslibLog( $file );
+					$zip->close();
+					$newLocation = $zipFolder . $fileInfo['basename'];
+					try {
+						rename($file, $newLocation);
+					} catch(\Exception $exception) {
+						echo "Error while copying the file to zip folder: ".$exception->getMessage();
+					}
 				}
 			}
+			$this->insert2geslibLog( $file );
 		}
+	}
 
-		$this->processZipFiles();
+	public function insert2geslibLog(string $file) {
+		if (!$this->db->isFilenameExists(basename($file))) {
+			$this->db->insertLogData(basename($file), 'logged', count(file($file)));
+		}
 	}
 
 	public function listFilesInFolder() {
@@ -140,10 +163,10 @@ class GeslibApiReadFiles {
 
 	public function unzipFile(string $path) {
 		// Check if the ZIP file is already unzipped
-		if (!$this->isUnzipped($path, $this->mainFolderPath)) {
+		if ( !$this->isUnzipped($path, $this->mainFolderPath) ) {
 			// Initialize the ZipArchive class
 			$zip = new ZipArchive;
-			$res = $zip->open($path);
+			$res = $zip->open( $path );
 			if ($res === TRUE) {
 				// Extract the ZIP file to the same folder
 				$zip->extractTo($this->mainFolderPath);
@@ -195,47 +218,53 @@ class GeslibApiReadFiles {
 			return false; // Return false if file not found
 	}
 
-	public function countLinesWithGP4($filename) {
+	public function countLinesWithGP4($filename, $type='product') {
 		// Check if the file exists
+		$codes  = ['GP4', '1L','3'];
 		if (!file_exists($filename)) {
 			return false; // Return false if file not found
 		}
 
-		// Initialize the counts to 0
-		$counts = [
-			'total' => 0,
-			'GP4A' => 0,
-			'GP4M' => 0,
-			'GP4B' => 0
-		];
+			// Initialize the counts to 0
+			$counts = [
+				'total' => 0,
+				'GP4A' => 0,
+				'GP4M' => 0,
+				'GP4B' => 0,
+				'1LA' => 0,
+				'1LM' => 0,
+				'1LB' => 0,
+				'3A' => 0,
+				'3M' => 0,
+				'3B' => 0,
+			];
 
-		$handle = fopen($filename, "r"); // Open the file for reading
-		// Read line by line
-		while (($line = fgets($handle)) !== false) {
-			// Check if the line starts with "GP4"
-			if (substr($line, 0, 3) === "GP4") {
-				$counts['total']++; // Increment total GP4 lines count
+			$handle = fopen($filename, "r"); // Open the file for reading
+			// Read line by line
+			while (( $line = fgets( $handle )) !== false ) {
+				// Check if the line starts with "GP4"
+				$line_array = explode('|',$line);
+				foreach ($codes as $code) {
+					if ( $line_array[0] === $code ) {
+						$counts[ 'total' ]++; // Increment total GP4 lines count
 
-				// Check the second part after "GP4|"
-				$parts = explode('|', $line);
-				if (count($parts) > 1) {
-					switch ($parts[1]) {
-						case 'A':
-							$counts['GP4A']++;
-							break;
-						case 'M':
-							$counts['GP4M']++;
-							break;
-						case 'B':
-							$counts['GP4B']++;
-							break;
+						if ( count( $line_array ) > 1 ) {
+							switch ( $line_array[1] ) {
+								case 'A':
+									$counts[ $code.'A' ]++;
+									break;
+								case 'M':
+									$counts[ $code.'M' ]++;
+									break;
+								case 'B':
+									$counts[ $code.'B' ]++;
+									break;
+							}
+						}
 					}
 				}
 			}
-		}
-
 		fclose($handle); // Close the file handle
-
 		return $counts; // Return the counts
 	}
 

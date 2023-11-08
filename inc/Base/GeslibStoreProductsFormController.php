@@ -87,12 +87,11 @@ class GeslibStoreProductsFormController extends BaseController
      * @return void
      */
     public function ajaxHandleStoreLog() {
-        check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        //$task_id = $this->enqueueTask('store_log');
+        check_ajax_referer( 'geslib_store_products_form', 'geslib_nonce' );
         $geslibReadFiles = new GeslibApiReadFiles;
         $geslibReadFiles->readFolder();
-        update_option('geslib_admin_notice', 'File Logged');
-        wp_send_json_success([ 'message' => 'File Logged' ]);
+        update_option( 'geslib_admin_notice', 'File Logged' );
+        wp_send_json_success( [ 'message' => 'File Logged' ] );
     }
 
     /**
@@ -149,7 +148,6 @@ class GeslibStoreProductsFormController extends BaseController
         $geslibApiStoreData->storeProductCategories();
         $geslibApiDbManager = new GeslibApiDbManager;
         $geslibApiDbManager->reorganizeProductCategories();
-        //$task_id = $this->enqueueTask('store_categories');
         update_option('geslib_admin_notice', 'Geslib Categories Stored');
         wp_send_json_success(['message' => 'Geslib Categories Stored', 'task_id' => $task_id]);
     }
@@ -158,22 +156,20 @@ class GeslibStoreProductsFormController extends BaseController
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiStoreData = new GeslibApiStoreData;
         $geslibApiStoreData->storeEditorials();
-        //$task_id = $this->enqueueTask('store_editorials');
         update_option('geslib_admin_notice', 'Geslib Editorials Stored');
-        wp_send_json_success(['message' => 'Geslib Editorials Stored', 'task_id' => $task_id]);
+        wp_send_json_success(['message' => 'Geslib Editorials Stored']);
     }
     public function ajaxHandleStoreAuthors() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiStoreData = new GeslibApiStoreData;
         $geslibApiStoreData->storeAuthors();
-        //$task_id = $this->enqueueTask('store_authors');
         update_option('geslib_admin_notice', 'Geslib Authors Stored');
-        wp_send_json_success(['message' => 'Geslib authors Stored', 'task_id' => $task_id]);
+        wp_send_json_success(['message' => 'Geslib authors Stored']);
     }
 
     public function ajaxHandleStoreProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        //$task_id = $this->enqueueTask('store_products');
+
         $geslibApiDbManager = new GeslibApiDbManager;
         $geslibApiDbManager->storeProducts();
         //$progress = get_option('geslib_product_progress', 0);
@@ -181,7 +177,7 @@ class GeslibStoreProductsFormController extends BaseController
     }
     public function ajaxHandleDeleteProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        /* $task_id = $this->enqueueTask('delete_products'); */
+
         $geslibApiDbManager = new GeslibApiDbManager;
         $geslibApiDbManager->deleteAllProducts();
         update_option( 'geslib_admin_notice', 'Geslib Products Deleted' );
@@ -201,7 +197,12 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleEmptyQueue(){
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        update_option('geslib_queue', []);
+        // Define the queue table name
+        global $wpdb;
+        $queueTable = $wpdb->prefix . 'geslib_queues';
+
+        // Truncate the table to empty it
+        $wpdb->query("TRUNCATE TABLE `{$queueTable}`");
         wp_send_json_success( [ 'message' => 'Remove queue' ] );
     }
 
@@ -213,24 +214,18 @@ class GeslibStoreProductsFormController extends BaseController
         }
     }
 
-    public function enqueueTask($taskData) {
-        $queue = get_option('geslib_queue', []);
-        $taskData['id'] = uniqid();
-        $queue[] = $taskData;
-        update_option('geslib_queue', $queue);
-        update_option("geslib_task_{$task_id}_status", 'queued');
-        return $task_id;
-    }
 
     public function processQueue() {
-        $queue = get_option( 'geslib_queue', [] );
-        if ( !empty( $queue ) ) {
-            $taskData = array_shift( $queue );
-            update_option( 'geslib_queue', $queue );
-            update_option( "geslib_task_{$task['id']}_status", 'processing' );
-            switch ( $taskData["type"] ) {
-                case 'check_file':
+        global $wpdb;
+        // Define the queue table name
+        $queueTable = $wpdb->prefix . 'geslib_queues';
+        // Fetch the next task from the queue table
+        $taskData = $wpdb->get_row("SELECT * FROM `{$queueTable}` ORDER BY id ASC LIMIT 1");
 
+        if ( $taskData ) {
+            switch ( $taskData->type ) {
+                case 'check_file':
+                    // Handle check_file task
                 break;
                 case 'store_log':
                     $geslibReadFiles = new GeslibApiReadFiles;
@@ -247,7 +242,8 @@ class GeslibStoreProductsFormController extends BaseController
                     $geslibApiStoreData->storeAuthors();
                 break;
             }
-            update_option("geslib_task_{$task['id']}_status", 'completed');
+            // Delete the fetched task from the queue
+            $wpdb->delete($queueTable, ['id' => $taskData->id]);
         }
     }
 }

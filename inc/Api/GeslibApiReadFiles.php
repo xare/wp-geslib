@@ -23,7 +23,7 @@ class GeslibApiReadFiles {
 	/**
 	 * readFolder
 	 *
-	 * @return void
+	 * @return int
 	 */
 	public function readFolder(){
 		$files = glob( $this->mainFolderPath . 'INTER*' );
@@ -42,7 +42,6 @@ class GeslibApiReadFiles {
 					// Extract the files to the mainFolderPath
 					$zip->extractTo( $this->mainFolderPath );
 					// Insert into geslib_log if not already
-					$this->insert2geslibLog( $file );
 					$zip->close();
 					$newLocation = $zipFolder . $fileInfo['basename'];
 					try {
@@ -52,13 +51,13 @@ class GeslibApiReadFiles {
 					}
 				}
 			}
-			$this->insert2geslibLog( $file );
+			return $this->insert2geslibLog( $fileInfo['filename'] );
 		}
 	}
 
-	public function insert2geslibLog(string $file) {
-		if (!$this->db->isFilenameExists(basename($file))) {
-			$this->db->insertLogData(basename($file), 'logged', count(file($file)));
+	public function insert2geslibLog( string $file ) {
+		if ( !$this->db->isFilenameExists( basename( $file ))) {
+			return $this->db->insertLogData( basename($file ), 'logged', count( file( $file )));
 		}
 	}
 
@@ -66,6 +65,10 @@ class GeslibApiReadFiles {
 		$justFileNames = array_map( 'basename', glob( $this->mainFolderPath . 'INTER*' ) );
 		$geslibApiDbManager = new GeslibApiDbManager;
 		return $geslibApiDbManager->fetchLoggedFilesFromDb();
+	}
+
+	public function countFilesInFolder(){
+		return count($this->listfilesInFolder());
 	}
 
 

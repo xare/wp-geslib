@@ -219,7 +219,7 @@ class GeslibApiLines {
 			$this->db->insertLinesIntoQueue($batch);
 		}
 
-    	return 'File ' . $filename . ' has been read with ' . count( $lines ) . ' lines';
+    	return $log_id;
 	}
 
 	public function sanitizeLine($line) {
@@ -260,6 +260,7 @@ class GeslibApiLines {
 			}
 			$index = (in_array( $data[0] ,['6E', '6TE','BIC'])) ? 1 : 2;
 			$this->db->deleteItemFromQueue('store_lines', $log_id, $data[$index]);
+
 		}
 
 	}
@@ -401,19 +402,21 @@ class GeslibApiLines {
 		if ( !$original_content ) return error_log("error at Merge Content");
 
 		$original_content_array = json_decode( $original_content, true);
-		if (
-			isset( $original_content_array['categories'] )
-			&& count( $original_content_array['categories'] ) > 0
-			) {
-				error_log('categoryMerge');
-				$original_content_array['categories'] = array_merge( $original_content_array['categories'], $new_content_array['categories'] );
-				error_log(print_r($original_content_array['categories']));
-				array_push( $original_content_array['categories'], $new_content_array['categories'] );
-				error_log('After push');
-				error_log(print_r($original_content_array));
-		} elseif ( isset( $new_content_array['categories'] ) ) {
-			$original_content_array['categories'] = $new_content_array['categories'];
-		};
+		if( isset( $new_content_array['categories'] ) ) {
+			if (
+				isset( $original_content_array['categories'] )
+				&& count( $original_content_array['categories'] ) > 0
+				) {
+					error_log('categoryMerge');
+					$original_content_array['categories'] = array_merge( $original_content_array['categories'], $new_content_array['categories'] );
+					error_log(print_r($original_content_array['categories']));
+					array_push( $original_content_array['categories'], $new_content_array['categories'] );
+					error_log('After push');
+					error_log(print_r($original_content_array));
+			} elseif ( isset( $new_content_array['categories'] ) ) {
+				$original_content_array['categories'] = $new_content_array['categories'];
+			}
+		}
 
 		$fields = ['sinopsis','biografia'];
 		foreach( $fields as $field ) {

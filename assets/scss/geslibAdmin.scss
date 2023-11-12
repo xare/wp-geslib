@@ -9,3 +9,24 @@ ul {
     margin-inline-end: 1rem !important;
     margin-block-end: 1rem !important;
 }
+
+ul.geslib-statistics {
+    display: flex;
+    gap: 1rem;
+    flex-direction:row;
+    flex-wrap: wrap;
+    font-size: 1.2rem;
+    line-height:1.6rem;
+}
+
+.geslib-statistics li {
+    padding: 1rem;
+    border:1px solid #cdcdcd;
+    text-align: center;
+    background: #efefef;
+}
+
+.geslib-wrap, .geslib-wrap p {
+    font-size: 1.1rem !important;
+    line-height: 1.5rem !important;
+}

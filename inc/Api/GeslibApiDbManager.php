@@ -33,7 +33,15 @@ class GeslibApiDbManager {
 		$this->geslibApiSanitize = new GeslibApiSanitize();
 	}
 
-	public function insertLogData( $filename, $status, $linesCount  ) {
+	/**
+	 * insertLogData
+	 *
+	 * @param  string $filename
+	 * @param  string $status
+	 * @param  int $linesCount
+	 * @return mixed
+	 */
+	public function insertLogData( string $filename, string $status, int $linesCount ) :mixed {
 		global $wpdb;
 		$geslibLogValues = [
 			$filename,
@@ -44,7 +52,7 @@ class GeslibApiDbManager {
 		];
 		$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
 		try {
-			$wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
+			return $wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
 						$insertArray,
 						['%s', '%s', '%s', '%d', '%s']);
 		} catch (\Exception $e) {
@@ -341,8 +349,7 @@ class GeslibApiDbManager {
 			$lines = $wpdb->get_results($query);
 			//if ( count( $lines ) == 0) return FALSE;
 
-			foreach ($lines as $line){
-				var_dump($line);
+			foreach ( $lines as $line ) {
 				$item = [
 					'geslib_id' => $line->geslib_id,
 					'log_id' => $line->log_id,
@@ -350,7 +357,17 @@ class GeslibApiDbManager {
 					//'action' => $line->action,
 					'type' => 'store_products'  // type to identify the task in processQueue
 				];
-				$wpdb->insert($queueTable, $item); // Directly insert into the database queue
+				try {
+					$wpdb->insert( $queueTable, $item ); // Directly insert into the database queue
+					try { $wpdb->delete($table,[
+								'id' => $line->id
+							],['%d']);
+					} catch(\Exception $exception) {
+						return $exception->getMessage();
+					}
+				} catch( \Exception $exception ) {
+					return $exception->getMessage();
+				}
 			}
 		}
 		/* $totalLines = $this->_getTotalLinesProducts();
@@ -376,6 +393,7 @@ class GeslibApiDbManager {
 	}
 
     public function storeProduct($geslib_id, $content){
+		var_dump($content);
 		// Check if product already exists
 		$content = json_decode($content, true);
 		$ean = $content['ean'];
@@ -729,7 +747,12 @@ class GeslibApiDbManager {
 		}
 	}
 
-	public function deleteAllProducts() {
+	/**
+	 * deleteAllProducts
+	 *
+	 * @return mixed
+	 */
+	public function deleteAllProducts() :mixed {
 		// Query for all products
 		$batch_size = ($_POST['batch_size'] == null) ? -1 : $_POST['batch_size'];
 		$offset = ($_POST['offset'] == null) ? 0 : $_POST['offset'];
@@ -747,7 +770,7 @@ class GeslibApiDbManager {
 
 		// If no posts are returned, we're done
 		if ( !$query->have_posts() ) {
-			return;
+			return null;
 		}
 		$loop = 0;
 		$response = [];
@@ -774,10 +797,44 @@ class GeslibApiDbManager {
 		return json_encode( $response );
 	}
 
-	public function fetchLoggedFilesFromDb() {
+	/**
+	 * fetchLoggedFilesFromDb
+	 *
+	 * @return array
+	 */
+	public function fetchLoggedFilesFromDb() :array {
 		global $wpdb;
-		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
 		return $wpdb->get_results( "SELECT filename, status FROM ".$wpdb->prefix.self::GESLIB_LOG_TABLE );
+	}
+
+	/**
+	 * countGeslibLog
+	 *
+	 * @return int
+	 */
+	public function countGeslibLog() :int {
+		global $wpdb;
+		return $wpdb->get_var( "SELECT COUNT(*) FROM ".$wpdb->prefix.self::GESLIB_LOG_TABLE);
+	}
+
+	/**
+	 * countGeslibLogStatus
+	 *
+	 * @param  mixed $status
+	 * @return int
+	 */
+	public function countGeslibLogStatus( string $status ) :int {
+		global $wpdb;
+		return $wpdb->get_var( "SELECT COUNT(*) FROM ".$wpdb->prefix.self::GESLIB_LOG_TABLE ." WHERE status='".$status."'");
+	}
+	/**
+	 * countGeslibLines
+	 *
+	 * @return int
+	 */
+	public function countGeslibLines() :int {
+		global $wpdb;
+		return $wpdb->get_var( "SELECT COUNT(*) FROM ".$wpdb->prefix.self::GESLIB_LINES_TABLE);
 	}
 
 	public function insertLinesIntoQueue($batch) {
@@ -785,10 +842,29 @@ class GeslibApiDbManager {
 		$tableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
 		foreach ($batch as $item) {
-			$wpdb->insert($tableName, $item);
+			try{
+				$wpdb->insert($tableName, $item);
+				try {
+					$wpdb->delete(
+						$wpdb->prefix .'geslib_lines',
+						[
+							'geslib_id' => $item['geslib_id'],
+							'log_id' => $item['log_id']
+						],['%d','%d']
+					);
+				} catch( \Exception $exception ) { echo $exception->getMessage(); }
+			} catch( \Exception $exception ) { echo $exception->getMessage(); }
 		}
 	}
 
+	/**
+	 * deleteItemFromQueue
+	 *
+	 * @param  mixed $type
+	 * @param  mixed $log_id
+	 * @param  mixed $geslib_id
+	 * @return void
+	 */
 	public function deleteItemFromQueue( string $type, int $log_id, string $geslib_id ) {
 		global $wpdb;
 		$geslib_id = ( $geslib_id =='' )? '0':$geslib_id;
@@ -812,7 +888,13 @@ class GeslibApiDbManager {
 		}
 	}
 
-	public function processFromQueue($type) {
+	/**
+	 * processFromQueue
+	 *
+	 * @param  mixed $type
+	 * @return void
+	 */
+	public function processFromQueue( string $type ) {
 		global $wpdb;
         $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		if($type = 'store_lines') {
@@ -824,7 +906,13 @@ class GeslibApiDbManager {
 			} while ( $queue_count > 0 );
 		}
 	}
-	public function processBatchStoreLines( $batchSize = 10 ) {
+	/**
+	 * processBatchStoreLines
+	 *
+	 * @param  mixed $batchSize
+	 * @return void
+	 */
+	public function processBatchStoreLines( int $batchSize = 10 ) {
 
         $queue = $this->getBatchFromQueue( $batchSize, 'store_lines' );
 
@@ -841,14 +929,38 @@ class GeslibApiDbManager {
         //echo "Processed a batch of tasks.";
     }
 
-	function getBatchFromQueue( $batchSize, $type ) {
+	/**
+	 * getBatchFromQueue
+	 *
+	 * @param  int $batchSize
+	 * @param  string $type
+	 * @return array
+	 */
+	function getBatchFromQueue( int $batchSize, string $type ) :array {
         global $wpdb;
-        $tableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
-        $query = $wpdb->prepare( "SELECT * FROM `$tableName` WHERE type='$type' LIMIT %d", $batchSize );
+        $query = $wpdb->prepare( "SELECT * FROM ". $wpdb->prefix . self::GESLIB_QUEUES_TABLE ." WHERE type=%s LIMIT %d", $type, $batchSize );
         return $wpdb->get_results( $query );
     }
 
-	public function get_total_number_of_products() {
+	/**
+	 * getQueuedTasks
+	 *
+	 * @param  string $type
+	 * @return array
+	 */
+	public function getQueuedTasks( string $type) :array {
+		global $wpdb;
+		$query = $wpdb->prepare( "SELECT * FROM ". $wpdb->prefix . self::GESLIB_QUEUES_TABLE ." WHERE type=%s", $type );
+        return $wpdb->get_results( $query );
+
+	}
+
+	/**
+	 * get_total_number_of_products
+	 *
+	 * @return int
+	 */
+	public function get_total_number_of_products() :int {
 		global $wpdb;
 
 		// Get the total number of products (excluding variations)
@@ -862,4 +974,19 @@ class GeslibApiDbManager {
 
 		return $total;
 	}
+
+	/**
+	 * countGeslibQueue
+	 *
+	 * @param  string $type
+	 * @return mixed
+	 */
+	public function countGeslibQueue( string $type ) :mixed {
+		global $wpdb;
+		$queueTable = $wpdb->prefix . self::GESLIB_QUEUES_TABLE; // Replace with your actual table name
+		// Prepare SQL to count the number of each type of task
+		$sql = $wpdb->prepare( "SELECT COUNT(*) FROM {$queueTable} WHERE type='" . $type."'");
+		return $wpdb->get_var($sql);
+	}
+
 }

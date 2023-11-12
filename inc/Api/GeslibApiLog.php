@@ -25,4 +25,5 @@ class GeslibApiLog {
         return $this->db->setLogStatus( $log_id, $status );
     }
 
+
 }

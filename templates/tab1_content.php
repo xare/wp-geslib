@@ -1,11 +1,21 @@
 <?php
+    use Inc\Geslib\Api\GeslibApiDbManager;
+    use Inc\Geslib\Api\GeslibApiLines;
+    use Inc\Geslib\Api\GeslibApiLog;
+    use Inc\Geslib\Api\GeslibApiReadFiles;
+
+    $geslibDbManager = new GeslibApiDbManager;
+    $geslibApiReadFiles = new GeslibApiReadFiles;
+    $geslibApiLog = new GeslibApiLog;
+    $geslibApiLines = new GeslibApiLines;
+
     $geslib_admin_notice = get_option('geslib_admin_notice', '');
     if ( !empty( $geslib_admin_notice ) ) {
         echo '<div class="notice">' . $geslib_admin_notice . '</div>';
         delete_option('geslib_admin_notice');  // Clear the notice
     }
 ?>
-<div class="wrap">
+<div class="wrap geslib-wrap">
     <h1>Acciones</h1>
     <p>¡Ojo! En principio no hay que tocar estos botones ya que las acciones que disparan han sido introducidas en una tarea programada que ejecutará cada una por separado, en orden y de modo automático. No obstante, en caso de fallo se puede hacer manualmente.</p>
     <p>Esta es la secuencia de acciones y sus explicaciones.</p>
@@ -23,12 +33,32 @@
         </ol>
         <li><strong>Almacenaje de los datos en su destino final</strong> Se lee la cola de procesamiento y se guardan los contenidos en el lugar finald de la tabla de datos donde ya se pueden acceder.</li>
     </ol>
-    <?php
-    use Inc\Geslib\Api\GeslibApiDbManager;
-    $geslibDbManager = new GeslibApiDbManager; ?>
-    <ul>
-        <li>Número de productos almacenados:
+
+    <ul class="geslib-statistics">
+        <li>Productos almacenados:<br />
             <strong><?php echo $geslibDbManager->get_total_number_of_products(); ?></strong>
+        </li>
+        <li>Archivos geslib en la carpeta:<br />
+            <strong><?php echo $geslibApiReadFiles->countFilesInFolder(); ?></strong>
+        </li>
+         <li>Archivos registrados en la tabla logs:<br />
+            <strong><?php echo $geslibDbManager->countGeslibLog(); ?></strong>
+            <br />
+            Logged: <strong><?php echo $geslibDbManager->countGeslibLogStatus('logged'); ?></strong>
+            <br />
+            Queued: <strong><?php echo $geslibDbManager->countGeslibLogStatus('queued'); ?></strong>
+            <br />
+            Processed: <strong><?php echo $geslibDbManager->countGeslibLogStatus('processed'); ?></strong>
+
+        </li>
+        <li>Archivos registrados en la tabla lines:<br />
+            <strong><?php echo $geslibDbManager->countGeslibLines(); ?></strong>
+        </li>
+        <li>Tareas en la cola "store_lines":<br />
+            <strong><?php echo $geslibDbManager->countGeslibQueue('store_lines'); ?></strong>
+        </li>
+        <li>Tareas en la cola "store_products":<br />
+            <strong><?php echo $geslibDbManager->countGeslibQueue('store_products'); ?></strong>
         </li>
     </ul>
     <form method="post" action="#tab-1" id="geslibProcess">

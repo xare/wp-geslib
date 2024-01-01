@@ -87,8 +87,13 @@ document.addEventListener("DOMContentLoaded", function() {
         { buttonName: 'check_file', action: 'geslib_check_file', type: 'store' },
         { buttonName: 'store_log', action: 'geslib_store_log', type: 'store' },
         { buttonName: 'store_lines', action: 'geslib_store_lines', type: 'store' },
+        { buttonName: 'process_lines_queue', action: 'geslib_process_lines_queue', type: 'store' },
         { buttonName: 'store_categories', action: 'geslib_store_categories', type: 'store' },
         { buttonName: 'store_editorials', action: 'geslib_store_editorials', type: 'store' },
+        { buttonName: 'process_products_queue', action: 'geslib_process_products_queue', type: 'store' },
+        { buttonName: 'process_all', action: 'geslib_process_all', type: 'store'},
+        { buttonName: 'process_dilve', action: 'geslib_process_dilve', type: 'store'},
+        { buttonName: 'set_to_logged', action: 'geslib_set_to_logged', type: 'store'},
         { buttonName: 'truncate_log', action: 'geslib_truncate_log', type: 'delete' },
         { buttonName: 'truncate_lines', action: 'geslib_truncate_lines', type: 'delete' },
         { buttonName: 'empty_queue', action: 'geslib_empty_queue', type: 'delete'}
@@ -107,6 +112,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
+    if( !document.getElementById( "geslibLogQueueProcess")) return;
     document.getElementById( "geslibLogQueueProcess" ).addEventListener( "click", async function( event ) {
         event.preventDefault();
         let button = event.target;

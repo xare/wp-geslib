@@ -9,6 +9,7 @@ use Inc\Geslib\Api\GeslibApiLines;
 use Inc\Geslib\Api\GeslibApiReadFiles;
 use Inc\Geslib\Api\GeslibApiStoreData;
 use Inc\Geslib\Base\BaseController;
+use Inc\Dilve\Api\DilveApi;
 
 /**
  * @class GeslibStoreProductsFormController
@@ -27,6 +28,7 @@ class GeslibStoreProductsFormController extends BaseController
             'check_file',
             'store_log',
             'store_lines',
+            'process_lines_queue',
             'log_queue',
             'log_unqueue',
             'truncate_log',
@@ -35,6 +37,10 @@ class GeslibStoreProductsFormController extends BaseController
             'store_editorials',
             'store_authors',
             'store_products',
+            'process_products_queue',
+            'process_all',
+            'process_dilve',
+            'set_to_logged',
             'delete_products',
             'empty_queue'
         ];
@@ -48,10 +54,11 @@ class GeslibStoreProductsFormController extends BaseController
         }
 
         add_action('admin_notices', [ $this, 'displayAdminNotice' ]);
-        /* if (!wp_next_scheduled('geslib_process_queue')) {
-            wp_schedule_event(time(), 'hourly', 'geslib_process_queue');
+
+        if (!wp_next_scheduled('geslib_process_queue')) {
+            wp_schedule_event(time(), 'daily', 'geslib_process_queue');
         }
-        add_action('geslib_process_queue', [$this, 'processQueue']); */
+        add_action('geslib_process_queue', [$this, 'processAll']);
     }
 
     /**
@@ -89,9 +96,9 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleStoreLog() {
         check_ajax_referer( 'geslib_store_products_form', 'geslib_nonce' );
         $geslibReadFiles = new GeslibApiReadFiles;
-        $geslibReadFiles->readFolder();
+        $filenames = $geslibReadFiles->readFolder();
         update_option( 'geslib_admin_notice', 'File Logged' );
-        wp_send_json_success( [ 'message' => 'File Logged' ] );
+        wp_send_json_success( [ 'message' => 'File Logged', 'files' => $filenames ] );
     }
 
     /**
@@ -103,6 +110,14 @@ class GeslibStoreProductsFormController extends BaseController
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiLines = new GeslibApiLines;
         $geslibApiLines->storeToLines();
+        update_option('geslib_admin_notice', 'Creada la cola de Lines');
+        wp_send_json_success(['message' => 'Creada la cola de Lines. Puedes verlo en la pestaña "Queues".']);
+    }
+
+    public function ajaxHandleProcessLinesQueue() {
+        check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
+        $geslibApiDb = new GeslibApiDbManager();
+        $geslibApiDb->processFromQueue('store_lines');
         update_option('geslib_admin_notice', 'Creada la cola de Lines');
         wp_send_json_success(['message' => 'Creada la cola de Lines. Puedes verlo en la pestaña "Queues".']);
     }
@@ -142,6 +157,7 @@ class GeslibStoreProductsFormController extends BaseController
         update_option('geslib_admin_notice', 'Geslib Log Truncated');
         wp_send_json_success(['message' => 'Geslib Log Truncated']);
     }
+
     public function ajaxHandleStoreCategories() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiStoreData = new GeslibApiStoreData;
@@ -169,12 +185,58 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleStoreProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-
         $geslibApiDbManager = new GeslibApiDbManager;
         $geslibApiDbManager->storeProducts();
         //$progress = get_option('geslib_product_progress', 0);
         wp_send_json_success(['message' => 'Product Storing task has been queued', 'task_id' => $task_id]);
     }
+
+    public function ajaxHandleProcessProductsQueue() {
+        check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
+
+        $geslibApiDbManager = new GeslibApiDbManager;
+        $geslibApiDbManager->processFromQueue('store_products');
+        update_option('geslib_admin_notice', 'Procesando la cola PRODUCTOS');
+        wp_send_json_success(['message' => 'Procesada la cola PRODUCTOS.']);
+    }
+
+    public function ajaxHandleProcessAll() {
+        check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
+        $geslibApiReadFiles = new GeslibApiReadFiles();
+        $geslibApiLines = new GeslibApiLines();
+        $geslibApiDbManager = new GeslibApiDbManager();
+        $dilveApi = new DilveApi();
+        while( $geslibApiDbManager->checkLoggedStatus() ) {
+            $geslibApiReadFiles->readFolder();
+            $log_id = $geslibApiLines->storeToLines();
+            $geslibApiDbManager->processFromQueue('store_lines');
+            $geslibApiDbManager->storeProducts();
+            $geslibApiDbManager->processFromQueue('store_products');
+            $geslibApiDbManager->truncateGeslibLines();
+            $geslibApiDbManager->setLogStatus( $log_id, 'processed');
+            //
+        }
+        //$dilveApi->scanProducts();
+        update_option('geslib_admin_notice', 'Procesando todos los archivos.');
+        wp_send_json_success(['message' => 'Procesando todos los archivos.']);
+    }
+
+    public function ajaxHandleSetToLogged() {
+        check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
+        $geslibApiDb = new GeslibApiDbManager;
+        $geslibApiDb->setLogTableToLogged();
+        update_option('geslib_admin_notice', 'El registro ha sido reinicializado.');
+        wp_send_json_success(['message' => 'El registro ha sido reinicializado.']);
+    }
+    public function ajaxHandleProcessDilve() {
+        check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
+
+        $dilveApi = new DilveApi;
+        $dilveApi->scanProducts();
+        update_option( 'geslib_admin_notice', 'Dilve Portadas' );
+        wp_send_json_success( [ 'message' => 'Importando las portadas' ] );
+    }
+
     public function ajaxHandleDeleteProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
 
@@ -186,13 +248,12 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleTruncateLines(){
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         $geslibApiDbManager = new GeslibApiDbManager;
-        if( !$geslibApiDbManager->truncateGeslibLines()) {
+        if ( !$geslibApiDbManager->truncateGeslibLines()) {
             update_option('geslib_admin_notice', 'ERROR: Geslib Lines NOT Truncated');
             wp_send_json_success(['message' => 'ERROR: Geslib Lines NOT Truncated']);
         }
-
         update_option( 'geslib_admin_notice', 'Geslib Lines Deleted' );
-        wp_send_json_success( [ 'message' => 'Geslib lines was deleted.' ] );
+        wp_send_json_success( ['message' => 'Geslib lines was deleted.'] );
     }
 
     public function ajaxHandleEmptyQueue(){
@@ -244,6 +305,22 @@ class GeslibStoreProductsFormController extends BaseController
             }
             // Delete the fetched task from the queue
             $wpdb->delete($queueTable, ['id' => $taskData->id]);
+        }
+    }
+
+    public function processAll() {
+        $geslibApiReadFiles = new GeslibApiReadFiles();
+        $geslibApiLines = new GeslibApiLines();
+        $geslibApiDbManager = new GeslibApiDbManager();
+        $dilveApi = new DilveApi();
+        while( $geslibApiDbManager->checkLoggedStatus() ) {
+            $geslibApiReadFiles->readFolder();
+            $log_id = $geslibApiLines->storeToLines();
+            $geslibApiDbManager->processFromQueue('store_lines');
+            $geslibApiDbManager->storeProducts();
+            $geslibApiDbManager->processFromQueue('store_products');
+            $geslibApiDbManager->truncateGeslibLines();
+            $geslibApiDbManager->setLogStatus( $log_id, 'processed');
         }
     }
 }

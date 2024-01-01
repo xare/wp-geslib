@@ -31,7 +31,7 @@ class GeslibApiReadFiles {
 		// Check if the zip folder exists, if not create it
 		// The true parameter allows the creation of nested directories as needed
 		if ( !is_dir($zipFolder) ) mkdir($zipFolder, 0755, true);
-
+		$filenames = [];
 		foreach( $files as $file ) {
 			$fileInfo = pathinfo( $file );
 			if ( isset( $fileInfo['extension'] )) {
@@ -51,13 +51,15 @@ class GeslibApiReadFiles {
 					}
 				}
 			}
-			return $this->insert2geslibLog( $fileInfo['filename'] );
+			$filenames[] = $fileInfo['filename'];
+			$this->insert2geslibLog( $fileInfo['filename'] );
 		}
+		return $filenames;
 	}
 
 	public function insert2geslibLog( string $file ) {
 		if ( !$this->db->isFilenameExists( basename( $file ))) {
-			return $this->db->insertLogData( basename($file ), 'logged', count( file( $file )));
+			return $this->db->insertLogData( basename( $file ), 'logged', count( file( $this->mainFolderPath . $file )));
 		}
 	}
 

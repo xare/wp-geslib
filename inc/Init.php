@@ -23,6 +23,7 @@ use Inc\Geslib\Commands\GeslibStoreProductsCommand;
 use Inc\Geslib\Commands\GeslibStoreDataCommand;
 use Inc\Geslib\Commands\GeslibTruncateTableCommand;
 use Inc\Geslib\Base\GeslibStoreProductsFormController;
+use Inc\Geslib\Base\GeslibUpdateValuesController;
 use Inc\Geslib\Commands\GeslibQueueCommand;
 use Inc\Geslib\Pages\Dashboard;
 
@@ -56,7 +57,8 @@ final class Init
       Enqueue::class,
       Dashboard::class,
       WooCommerce_Customizations::class,
-      Cron::class
+      Cron::class,
+      GeslibUpdateValuesController::class
     ];
   }
 

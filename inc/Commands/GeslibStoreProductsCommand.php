@@ -51,7 +51,7 @@ class GeslibStoreProductsCommand {
         return;
     }
       $this->db->storeProducts();
-      $geslibApiLiones = new GeslibApiLines;
+      $geslibApiLines = new GeslibApiLines;
       $this->db->setLogStatus( $log_id, 'processed' );
       $this->db->truncateGeslibLines();
       WP_CLI::line( "Store products" );

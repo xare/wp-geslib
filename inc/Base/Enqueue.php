@@ -25,9 +25,16 @@ function enqueue() {
 
       }
   function enqueue_admin() {
-        // enqueue all our scripts
-        wp_enqueue_style('GeslibAdminStyle', $this->plugin_url .'dist/css/geslibAdmin.min.css');
-        wp_enqueue_script('GeslibAdminScript', $this->plugin_url .'dist/js/geslibAdmin.min.js');
-        wp_enqueue_script('GeslibPagination', $this->plugin_url .'dist/js/pagination.min.js',['jquery'], '1.0', true);
-      }
+      // enqueue all our scripts
+      wp_enqueue_style('GeslibAdminStyle', $this->plugin_url .'dist/css/geslibAdmin.min.css');
+      wp_enqueue_script('GeslibAdminScript', $this->plugin_url .'dist/js/geslibAdmin.min.js');
+      wp_enqueue_script('GeslibPagination', $this->plugin_url .'dist/js/pagination.min.js',['jquery'], '1.0', true);
+
+      wp_enqueue_script('GeslibUpdateValues', $this->plugin_url . 'dist/js/geslibUpdateValues.min.js', ['jquery'], '1.0', true);
+      wp_localize_script('GeslibUpdateValues', 'ajax_object', array(
+          'ajax_url' => admin_url('admin-ajax.php'),
+          'nonce' => wp_create_nonce('my_ajax_nonce')
+      ));
+  }
+
 }

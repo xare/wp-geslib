@@ -24,6 +24,11 @@ ul.geslib-statistics {
     border:1px solid #cdcdcd;
     text-align: center;
     background: #efefef;
+    transition: background-color 0.4s ease;
+}
+
+.geslib-statistics li.darker-background {
+    background-color: rgba(0, 0, 0, 0.1); /* Adjust the color and opacity to your liking */
 }
 
 .geslib-wrap, .geslib-wrap p {

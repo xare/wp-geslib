@@ -134,7 +134,7 @@ class GeslibApiLines {
 		//"7", // Formatos de encuadernación
 		//"8", // Idiomas
 		//"9", // Palabras vacías
-		//"B", // Stock
+		"B", // Stock
 		//"B2", // Stock por centros
 		"E", // Estados de artículos
 		//"CLI", // Clientes
@@ -191,16 +191,13 @@ class GeslibApiLines {
 		$batch = [];
 
 		foreach ($lines as $line) {
-
 			$line_array = explode('|', $line);
-
 
 			$line = $this->sanitizeLine( $line );
 			if( $this->isUnnecessaryLine( $line ) ) continue;
 			if( !$this->isInProductKey( $line ) ) continue;
-			if( $this->isInEditorials( $line )) continue;
-
-			$index = (in_array($line_array[0],['6E', '6TE'])) ? 1 : 2;
+			if( $this->isInEditorials( $line ) ) continue;
+			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B'] ) ) ? 1 : 2;
 
 			$item = [
 				'data' => $line,
@@ -379,6 +376,20 @@ class GeslibApiLines {
 		$this->mergeContent( $data[1], $data[2], 'autor');
 	}
 
+	/**
+	 * processB
+	 * //B|21544|1
+	 * Añade datos de stock
+	 * @param  mixed $data
+	 * @param  mixed $log_id
+	 * @return void
+	 */
+	private function processB( $data, int $log_id ) {
+		$content_array['stock'] = $data[2];
+		$content_array['geslib_id'] = $data[1];
+		$this->db->insertData($content_array, 'stock', $log_id, 'product');
+	}
+
 
 	/**
 	 * mergeContent
@@ -395,7 +406,6 @@ class GeslibApiLines {
 						string $type,
 						int $log_id = 0,
 						string $action = '' ) {
-		//this function is called when the product has been created but we need to add more data to its content json string
 
 		//1. Get the content given the $geslib_id
 		$original_content = $this->db->fetchContent( $geslib_id, $type );
@@ -442,38 +452,41 @@ class GeslibApiLines {
 	public function isUnnecessaryLine(string $line) :bool {
 		return strpos($line, '< Genérica >') !== false;
 	}
-
+	/**
+	 * Check if the editorial is in the taxonomy.
+	 *
+	 * @param string $line
+	 *   The input line, e.g., '1L|A|216|AGUILAR'.
+	 *
+	 * @return bool
+	 *   TRUE if the editorial is in the taxonomy, FALSE otherwise.
+	 */
 	public function isInEditorials( string $line ) :bool {
-		// $line = 1L|A|216|AGUILAR
-		$line_items = explode( '|', $line );
-		if( $line_items[0] == '1L' && $line_items[1] == 'A' ) {
-			$terms = get_terms([
+		[$type, $action, $geslib_id] = explode('|', $line) + [null, null, null];
+		return $type === '1L' && $action === 'A' &&
+			!empty(get_terms( [
 				'taxonomy'   => 'editorials', // replace with your actual taxonomy name
 				'hide_empty' => false,
 				'meta_query' => [
 					[
 						'key'     => 'geslib_id',
-						'value'   => $line_items[2],
+						'value'   => $geslib_id,
 						'compare' => '=',
 					],
 				],
-			]);
-			//var_dump($terms);
-
-			// If term with geslib_id found, return true
-			if (!empty($terms) && !is_wp_error($terms)) {
-				return true;
-			}
-		}
-		return false;
+			]));
 	}
+	/**
+	 * Check if the line type is in product key and return the line if true.
+	 *
+	 * @param string $line
+	 *   The input line, e.g., 'Type|Other|Data'.
+	 *
+	 * @return string|bool
+	 *   The input line if the type is in product key, FALSE otherwise.
+	 */
 	public function isInProductKey($line) {
-		$line_items = explode('|', $line);
-		if (is_array($line_items) && in_array($line_items[0], self::$lineTypes)){
-			return implode('|', $line_items);
-		} else {
-			return false;
-		}
+		return in_array( explode( '|', $line )[0], self::$lineTypes) ? $line : false;
 	}
 
 }

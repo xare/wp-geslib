@@ -4,7 +4,7 @@
     use Inc\Geslib\Api\GeslibApiLog;
     use Inc\Geslib\Api\GeslibApiReadFiles;
 
-    $geslibDbManager = new GeslibApiDbManager;
+    $geslibApiDbManager = new GeslibApiDbManager;
     $geslibApiReadFiles = new GeslibApiReadFiles;
     $geslibApiLog = new GeslibApiLog;
     $geslibApiLines = new GeslibApiLines;
@@ -35,48 +35,69 @@
     </ol>
 
     <ul class="geslib-statistics">
-        <li>Productos almacenados:<br />
-            <strong><?php echo $geslibDbManager->get_total_number_of_products(); ?></strong>
-        </li>
         <li>Archivos geslib en la carpeta:<br />
-            <strong><?php echo $geslibApiReadFiles->countFilesInFolder(); ?></strong>
+            <strong data-target="total-files">
+                <?php echo $geslibApiReadFiles->countFilesInFolder(); ?>
+            </strong>
         </li>
          <li>Archivos registrados en la tabla logs:<br />
-            <strong><?php echo $geslibDbManager->countGeslibLog(); ?></strong>
+            <strong data-target="total-logs">
+                <?php echo $geslibApiDbManager->countGeslibLog(); ?>
+            </strong>
             <br />
-            Logged: <strong><?php echo $geslibDbManager->countGeslibLogStatus('logged'); ?></strong>
+            Logged:
+            <strong data-target="geslib-log-logged">
+                <?php echo $geslibApiDbManager->countGeslibLogStatus('logged'); ?>
+            </strong>
             <br />
-            Queued: <strong><?php echo $geslibDbManager->countGeslibLogStatus('queued'); ?></strong>
+            Queued:
+            <strong data-target="geslib-log-queued">
+                <?php echo $geslibApiDbManager->countGeslibLogStatus('queued'); ?>
+            </strong>
             <br />
-            Processed: <strong><?php echo $geslibDbManager->countGeslibLogStatus('processed'); ?></strong>
-
+            Processed:
+            <strong data-target="geslib-log-processed">
+                <?php echo $geslibApiDbManager->countGeslibLogStatus('processed'); ?>
+            </strong>
         </li>
-        <li>Archivos registrados en la tabla lines:<br />
-            <strong><?php echo $geslibDbManager->countGeslibLines(); ?></strong>
+        <li>Archivo en la cola de procesamiento:<br />
+            <strong data-target="queued-filename"><?php echo $geslibApiDbManager->getLogQueuedFilename(); ?></strong>
         </li>
         <li>Tareas en la cola "store_lines":<br />
-            <strong><?php echo $geslibDbManager->countGeslibQueue('store_lines'); ?></strong>
+            <strong data-target="total-lines-queue"><?php echo $geslibApiDbManager->countGeslibQueue('store_lines'); ?></strong>
         </li>
+        <li>Archivos registrados en la tabla lines:<br />
+            <strong data-target="total-lines"><?php echo $geslibApiDbManager->countGeslibLines(); ?></strong>
+        </li>
+
         <li>Tareas en la cola "store_products":<br />
-            <strong><?php echo $geslibDbManager->countGeslibQueue('store_products'); ?></strong>
+            <strong data-target="total-products-queue"><?php echo $geslibApiDbManager->countGeslibQueue('store_products'); ?></strong>
+        </li>
+        <li>Productos almacenados:<br />
+            <strong data-target="total-products"><?php echo $geslibApiDbManager->get_total_number_of_products(); ?></strong>
         </li>
     </ul>
     <form method="post" action="#tab-1" id="geslibProcess">
         <?php wp_nonce_field('geslib_store_products_form', 'geslib_nonce'); ?>
         <?php
             $buttons = [
-                ['0. Hello World', 'primary', 'hello_world',''],
-                ['0. Check File', 'primary', 'check_file','En este paso vamos a escanear el directorio y compararlo con los archivos guardados en la base de datos en la tabla de registro llamada geslib_log'],
-                ['1. Geslib Folder -> geslib_log', 'primary', 'store_log',''],
-                ['2. Geslig File -> queue geslib lines', 'primary', 'store_lines','Creada la cola de Lines. Puedes verlo en la pestaña "Queues".'],
-                ['3. Store Categories -> queue categories ', 'primary', 'store_categories',''],
-                ['4. Store Editorials', 'primary', 'store_editorials',''],
-                ['5. Store Authors', 'primary', 'store_authors',''],
-                ['6. Store Products: geslib_lines -> Queue products', 'primary', 'store_products',''],
-                ['X1. Truncate geslib log', 'delete', 'truncate_log','Esta acción borra todos los registros de los archivos procesados o puestos en cola.'],
-                ['X2. Truncate geslib lines', 'delete', 'truncate_lines','Esta acción borra todas las lineas del último archivo procesado de la cola.'],
-                ['X3. Delete all Products', 'delete', 'delete_products',''],
-                ['X4. Empty the queue', 'delete', 'empty_queue','']
+                ['0. Ajax Funciona', 'primary', 'hello_world', ''],
+                ['1. Escanear directorio', 'primary', 'check_file', 'En este paso vamos a escanear el directorio y compararlo con los archivos guardados en la base de datos en la tabla de registro llamada geslib_log'],
+                ['1. Registrar archivos', 'primary', 'store_log',''],
+                ['2. Preparar datos del archivo', 'primary', 'store_lines', 'Creada la cola de Lines. Puedes verlo en la pestaña "Queues".'],
+                ['2B. Procesar datos del archivo','primary', 'process_lines_queue', 'Procesar la cola de lines'],
+                ['3. Preparar datos de productos', 'primary', 'store_products',''],
+                ['3B. Crear productos','primary', 'process_products_queue', 'Procesar la cola de lines'],
+                ['4. Guardar Categories -> queue categories ', 'primary', 'store_categories',''],
+                ['5. Guardar Editorials', 'primary', 'store_editorials',''],
+                ['6. Guardar Authors', 'primary', 'store_authors',''],
+                ['7. Proceso total', 'primary', 'process_all', ''],
+                ['8. Proceso Dilve', 'primary', 'process_dilve', ''],
+                ['9. Reinicializar Registro', 'primary', 'set_to_logged', ''],
+                ['X1. Vaciar la tabla de registro', 'delete', 'truncate_log', 'Esta acción borra todos los registros de los archivos procesados o puestos en cola.'],
+                ['X2. Vaciar la tabla de los datos', 'delete', 'truncate_lines', 'Esta acción borra todas las lineas del último archivo procesado de la cola.'],
+                ['X3. Borrar los productos', 'delete', 'delete_products',''],
+                ['X4. Borrar las colas de procesamiento', 'delete', 'empty_queue','']
             ];
 
             array_map(function($button) {

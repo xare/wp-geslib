@@ -23,8 +23,8 @@ class GeslibApiDbManager {
 		'filename', // string inter000
 		'start_date', // date
 		'end_date', // date
-		'lines_count', // int number of lines
 		'status', // string waiting | enqueued | processed
+		'lines_count', // int number of lines
 	];
 
 	private $geslibApiSanitize;
@@ -47,14 +47,14 @@ class GeslibApiDbManager {
 			$filename,
 			date('Y-m-d H:i:s'),
 			null,
+			$status,
 			$linesCount,
-			$status
 		];
 		$insertArray = array_combine(self::$geslibLogKeys, $geslibLogValues);
 		try {
 			return $wpdb->insert($wpdb->prefix . self::GESLIB_LOG_TABLE,
 						$insertArray,
-						['%s', '%s', '%s', '%d', '%s']);
+						['%s', '%s', '%s', '%s', '%d']);
 		} catch (\Exception $e) {
 			return "This file has not been properly inserted into the database due to an error: ".$e->getMessage();
 		}
@@ -115,8 +115,7 @@ class GeslibApiDbManager {
   	public function _readGeslibLinesTable() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . self::GESLIB_LINES_TABLE;
-		$query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
-		$results = $wpdb->get_results($query);
+		$results = $wpdb->get_results("SELECT * FROM {$table_name}");
 
 		foreach($results as $result) {
 			$this->_storeData($result->type, $result->id, $result->content);
@@ -153,7 +152,7 @@ class GeslibApiDbManager {
 				],
 			);
 		} catch(\Exception $e){
-			echo "Se ha producido un error al intentar insertar información en ".$wpdb->prefix.self::GESLIB_LINES_TABLE." : ".$e->getMessage();
+			error_log("Se ha producido un error al intentar insertar información en ".$wpdb->prefix.self::GESLIB_LINES_TABLE." : ".$e->getMessage());
 		}
 	}
 
@@ -182,6 +181,7 @@ class GeslibApiDbManager {
 			);
 			return "The ".$entity." data was successfully inserted to geslib lines";
 		} catch (\Exception $e) {
+			error_log("The ".$entity." data was NOT successfully inserted to geslib lines ".$e->getMessage());
 			return "The ".$entity." data was NOT successfully inserted to geslib lines ".$e->getMessage();
 		}
 	}
@@ -332,8 +332,8 @@ class GeslibApiDbManager {
 	}
 	public function storeProducts() {
 		global $wpdb;
-		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
-		$queueTable = $wpdb->prefix.self::GESLIB_QUEUES_TABLE;
+		$geslibLinesTable = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$geslibQueueTable = $wpdb->prefix.self::GESLIB_QUEUES_TABLE;
 		// Create a queue for storing products.
         $actions = [
             'A', // Add
@@ -341,61 +341,50 @@ class GeslibApiDbManager {
             'B'  // Delete
         ];
 
-		foreach ($actions as $actionSet) {
+		foreach ( $actions as $actionSet ) {
 			$query = $wpdb->prepare(
-				"SELECT * FROM {$table} WHERE action=%s and entity=%s",
+				"SELECT * FROM {$geslibLinesTable} WHERE action=%s and entity=%s",
 				[ $actionSet, 'product']
 			);
-			$lines = $wpdb->get_results($query);
+			$lines = $wpdb->get_results( $query );
 			//if ( count( $lines ) == 0) return FALSE;
-
+			$batch_size = 2000; // Choose a reasonable batch size
+			$batch = [];
 			foreach ( $lines as $line ) {
 				$item = [
 					'geslib_id' => $line->geslib_id,
 					'log_id' => $line->log_id,
 					'data' => $line->content,
-					//'action' => $line->action,
 					'type' => 'store_products'  // type to identify the task in processQueue
 				];
-				try {
-					$wpdb->insert( $queueTable, $item ); // Directly insert into the database queue
-					try { $wpdb->delete($table,[
-								'id' => $line->id
-							],['%d']);
-					} catch(\Exception $exception) {
-						return $exception->getMessage();
-					}
-				} catch( \Exception $exception ) {
-					return $exception->getMessage();
+				if(isset($line->content->action)) {
+					$item['action'] = $line->content->action;
+				}
+				$batch[] = $item;
+				if ( count( $batch ) >= $batch_size ) {
+					$this->insertProductsIntoQueue( $batch );
+					$batch = [];
 				}
 			}
-		}
-		/* $totalLines = $this->_getTotalLinesProducts();
-		$processedLines = 0;
-		$hasMore = !empty($product_geslib_lines);
-		$progress = 0;
-		$response = [];
-		foreach($product_geslib_lines as $product_geslib_line) {
-			$this->storeProduct($product_geslib_line->geslib_id, $product_geslib_line->content);
-			$progress = ( $offset / $totalLines ) * 100;
-			update_option('geslib_product_progress', $progress);
-			$processedLines++;
-		}
-		update_option('geslib_hasmore', $hasMore);
-		$response = [
-			'hasMore' => $hasMore,
-			'progress' => number_format($progress, 2)." %",
-			'totalLines' => $totalLines,
-			'message' => "Processed {$offset} / {$totalLines} products."
-		];
+			// Don't forget the last batch
+			if ( !empty( $batch ) ) {
+				$this->insertProductsIntoQueue( $batch );
+			}
 
-		return json_encode($response); */
+			//return $line->log_id;
+		}
 	}
 
-    public function storeProduct($geslib_id, $content){
-		var_dump($content);
+    /**
+     * storeProduct
+     *
+     * @param  int $geslib_id
+     * @param  string $content
+     * @return void
+     */
+    public function storeProduct( int $geslib_id, string $content){
 		// Check if product already exists
-		$content = json_decode($content, true);
+		$content = json_decode( $content, true );
 		$ean = $content['ean'];
 		$author = $content['author'];
 		$num_paginas = $content['num_paginas'];
@@ -403,58 +392,66 @@ class GeslibApiDbManager {
 		$book_name = $content['description'];
 		$peso = $content['peso']/1000;
 		$book_description = '';
-		error_log($geslib_id);
+		$stock = $content['stock'];
+
 		if ( isset( $content['sinopsis'] ) )
 			$book_description = $content['sinopsis'];
-		$book_price = floatval(str_replace(',', '.', $content['pvp']));
-		$existing_product = null;
-		$args = [
-			'post_type'      => 'product',
-			'posts_per_page' => 1,
-			'post_status'    => 'publish',
-			'title'          => $book_name
-		];
+			$book_price = floatval(str_replace(',', '.', $content['pvp']));
+			$existing_product = null;
+			$args = [
+				'post_type'      => 'product',
+				'posts_per_page' => 1,
+				'post_status'    => 'publish',
+				'title'          => $book_name
+			];
 
-		$products = new WP_Query($args);
+			$products = new WP_Query($args);
 
-		if($products->have_posts()) {
-			while ($products->have_posts()) {
-				$products->the_post();
-				$existing_product = $products->post;
+			if($products->have_posts()) {
+				while ($products->have_posts()) {
+					$products->the_post();
+					$existing_product = $products->post;
+				}
+				wp_reset_postdata();
 			}
-			wp_reset_postdata();
-		}
 
-		if ($existing_product) {
-			// If product exists, get an instance of WC_Product for the existing product
-			$product = wc_get_product($existing_product->ID);
-		} else {
-			// If product does not exist, create a new instance of WC_Product_Simple
-			$product = new WC_Product_Simple();
-			$product->set_name($book_name); // name is only set for new products
-		}
+			if ($existing_product) {
+				// If product exists, get an instance of WC_Product for the existing product
+				$product = wc_get_product($existing_product->ID);
+			} else {
+				// If product does not exist, create a new instance of WC_Product_Simple
+				$product = new WC_Product_Simple();
+				$product->set_name($book_name); // name is only set for new products
+			}
 
-		// Set or update product data
+			// Set or update product data
 
-		$product->set_description($book_description);
-		$product->set_status("publish");  // can also be 'draft' or 'pending'
-		$product->set_catalog_visibility('visible');  // or 'hidden'
-		$product->set_price($book_price);
-		$product->set_regular_price($book_price);
-		$product->set_weight($peso);
+			$product->set_description($book_description);
+			$product->set_status("publish");  // can also be 'draft' or 'pending'
+			$product->set_catalog_visibility('visible');  // or 'hidden'
+			$product->set_price($book_price);
+			$product->set_regular_price($book_price);
+			$product->set_weight($peso);
+			$product->set_manage_stock( true );
+			$product->set_stock_quantity($stock);
 
-		// ... Set other product properties
+			// ... Set other product properties
 
-		// Save the product to the database and get its ID
-		$product_id = $product->save();
-		if(isset($ean)){
-			update_post_meta($product_id, '_ean', $ean);
-			update_post_meta($product_id, '_num_paginas', $num_paginas);
-		}
-		if(isset($author))
-			update_post_meta($product_id, '_author', $author);
+			// Save the product to the database and get its ID
+			try {
+				$product_id = $product->save();
+			} catch(\Exception $exception) {
+				error_log($exception->getMessage());
+			}
 
-		update_post_meta($product_id, 'geslib_id', $geslib_id);
+			if(isset($ean)){
+				update_post_meta($product_id, '_ean', $ean);
+				update_post_meta($product_id, '_num_paginas', $num_paginas);
+			}
+			if(isset($author))
+				update_post_meta($product_id, '_author', $author);
+
+			update_post_meta($product_id, 'geslib_id', $geslib_id);
 		// Get the integer value from the content array
 		$editorial_id = intval($content['editorial']);
 
@@ -479,7 +476,6 @@ class GeslibApiDbManager {
 		}
 
 		// APPEND CATEGORIES
-		var_dump($content['categories']);
 		if( isset($content['categories']) && is_array($content['categories']) && count( $content['categories']) > 0 ) {
 			foreach ( $content['categories'] as $key => $value ) {
 				$category_id = intval($key);
@@ -500,7 +496,11 @@ class GeslibApiDbManager {
 						// Terms found, get the first term
 						$category_term = $categories[0]->term_id;
 						// Assign the product to the editorial taxonomy term
-						wp_set_object_terms($product_id, $category_term, 'product_cat', true);
+						try {
+							wp_set_object_terms( $product_id, $category_term, 'product_cat', true );
+						} catch( \Exception $exception ){
+							error_log( $exception->getMessage() );
+						}
 					}
 			}
 		}
@@ -526,8 +526,11 @@ class GeslibApiDbManager {
 
 				// Using WooCommerce CRUD functions to delete product
 				$product = wc_get_product( $post_id );
-				$product->delete( true );
-
+				try{
+					$product->delete( true );
+				} catch(\Exception $exception) {
+					error_log($exception->getMessage());
+				}
 				// Alternatively, you could use wp_delete_post,
 				// but the WooCommerce way ensures all related meta and terms are cleaned up
 				// wp_delete_post( $post_id, true );
@@ -665,11 +668,8 @@ class GeslibApiDbManager {
 
 	public function getGeslibTable( $table_suffix ) {
 		global $wpdb;
-
 		$table_name = $wpdb->prefix .'geslib_'. $table_suffix;
-		$query = $wpdb->prepare( "SELECT * FROM {$table_name}" );
-		$results = $wpdb->get_results($query, ARRAY_A);
-		return $results;
+		return $wpdb->get_results("SELECT * FROM {$table_name}", ARRAY_A);
     }
 
 	/**
@@ -682,7 +682,10 @@ class GeslibApiDbManager {
 	public function setLogStatus( int $log_id, string $status ) :bool {
 		global $wpdb;
 		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE; // Replace with your actual table name if different
-		$data = ['status' => $status];
+		$data = [ 'status' => $status ];
+		if( $status == 'processed' ) {
+			$data[ 'end_date' ] = date('Y-m-d H:i:s');
+		}
 		$where = ['id' => $log_id];
 		$format = ['%s']; // string format
 		$where_format = ['%d']; // integer format
@@ -702,8 +705,8 @@ class GeslibApiDbManager {
 			$query = $wpdb->prepare( "SELECT id
 										FROM {$table_name}
 										WHERE status=%s",'queued' );
-										error_log($query);
-										error_log('id:'. $wpdb->get_var($query));
+			error_log($query);
+			error_log('id:'. $wpdb->get_var($query));
 			return $wpdb->get_var($query);
 		} catch ( \Exception $exception) {
 			wp_error('ERROR on getQueuedLogId: '. $exception->getMessage());
@@ -839,17 +842,31 @@ class GeslibApiDbManager {
 
 	public function insertLinesIntoQueue($batch) {
 		global $wpdb;
-		$tableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+		$queueTableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+		$linesTableName = $wpdb->prefix . self::GESLIB_LINES_TABLE;
 
 		foreach ($batch as $item) {
 			try{
-				$wpdb->insert($tableName, $item);
+				$wpdb->insert($queueTableName, $item);
+			} catch( \Exception $exception ) {
+				error_log( $exception->getMessage() ); }
+		}
+	}
+
+	public function insertProductsIntoQueue($batch) {
+		global $wpdb;
+		$queueTableName = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+		$linesTableName = $wpdb->prefix . self::GESLIB_LINES_TABLE;
+		foreach ( $batch as $item ) {
+			try{
+				$wpdb->insert( $queueTableName, $item );
 				try {
 					$wpdb->delete(
-						$wpdb->prefix .'geslib_lines',
+						$linesTableName,
 						[
 							'geslib_id' => $item['geslib_id'],
-							'log_id' => $item['log_id']
+							'log_id' => $item['log_id'],
+							'entity' => 'product'
 						],['%d','%d']
 					);
 				} catch( \Exception $exception ) { echo $exception->getMessage(); }
@@ -882,9 +899,9 @@ class GeslibApiDbManager {
 					'%d'  // placeholder for 'log_id', assuming it's an integer
 				]
 			);
-			//echo "Deleted task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id}";
+			error_log("Deleted task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id}");
 		} catch(\Exception $exception) {
-			//echo "Failed to delete task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id} :".$exception->getMessage();
+			error_log("Failed to delete task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id} :".$exception->getMessage());
 		}
 	}
 
@@ -897,13 +914,20 @@ class GeslibApiDbManager {
 	public function processFromQueue( string $type ) {
 		global $wpdb;
         $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
-		if($type = 'store_lines') {
+		if( $type == 'store_lines' ) {
 			do {
 				$this->processBatchStoreLines( 10 );
 				// Get the count of remaining items in the queue
 				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
 				//echo 'queue count '.$queue_count.'/n' ;
 			} while ( $queue_count > 0 );
+		}
+		if( $type == 'store_products' ) {
+			// Select tasks of type 'store_products' that are pending
+			do{
+				$this->processBatchStoreProducts( 10 );
+				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
+			} while( $queue_count > 0);
 		}
 	}
 	/**
@@ -913,21 +937,69 @@ class GeslibApiDbManager {
 	 * @return void
 	 */
 	public function processBatchStoreLines( int $batchSize = 10 ) {
-
         $queue = $this->getBatchFromQueue( $batchSize, 'store_lines' );
-
         // If there are no tasks, exit the function.
-
         $geslibApiLines = new GeslibApiLines();
-        $processedIds = []; // Counter to keep track of processed tasks.
         foreach ($queue as $task) {
-            // Process the task
-            //echo "Processing line: {$task->data}";
             $geslibApiLines->readLine( $task->data, $task->log_id );
-            //echo "Processed task with log_id: {$task->log_id}";
         }
-        //echo "Processed a batch of tasks.";
     }
+
+	public function processBatchStoreProducts( int $batchSize = 10 ) {
+		$queue = $this->getBatchFromQueue( $batchSize, 'store_products' );
+		foreach ( $queue as $task ) {
+			if( $task->action == 'stock') {
+				$this->stockProduct($task->geslib_id, $task->data);
+			} else if( $task->action == 'B') {
+				$this->deleteProduct( $task->geslib_id );
+			} else {
+				$this->storeProduct( $task->geslib_id, $task->data );
+			}
+			$this->deleteItemFromQueue( $task->type, $task->log_id,$task->geslib_id );
+		}
+	}
+
+	public function stockProduct( int $geslib_id, $data){
+		 $stock = $data->stock;
+		 if($stock == null || $stock == 0) return;
+		 // Ensure that WooCommerce is active
+		 if ( ! function_exists( 'wc_get_product' ) ) {
+			return;
+		}
+
+		// Args for the WP_Query
+		$args = [
+			'post_type'      => 'product',
+			'posts_per_page' => 1,
+			'meta_query'     => [
+				[
+					'key'   => 'geslib_id',
+					'value' => $geslib_id,
+				],
+			],
+		];
+
+		// Get the product
+		$query = new WP_Query( $args );
+
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$product_id = get_the_ID();
+				$product = wc_get_product( $product_id );
+
+				if ( $product ) {
+					// Update the stock
+					$product->set_stock_quantity( $stock );
+					$product->save();
+				}
+			}
+		}
+
+		// Reset the global post data. This restores the $post global to the current post in the main query.
+		wp_reset_postdata();
+	}
+
 
 	/**
 	 * getBatchFromQueue
@@ -952,7 +1024,6 @@ class GeslibApiDbManager {
 		global $wpdb;
 		$query = $wpdb->prepare( "SELECT * FROM ". $wpdb->prefix . self::GESLIB_QUEUES_TABLE ." WHERE type=%s", $type );
         return $wpdb->get_results( $query );
-
 	}
 
 	/**
@@ -985,8 +1056,77 @@ class GeslibApiDbManager {
 		global $wpdb;
 		$queueTable = $wpdb->prefix . self::GESLIB_QUEUES_TABLE; // Replace with your actual table name
 		// Prepare SQL to count the number of each type of task
-		$sql = $wpdb->prepare( "SELECT COUNT(*) FROM {$queueTable} WHERE type='" . $type."'");
+		$sql = $wpdb->prepare( "SELECT COUNT(*) FROM {$queueTable} WHERE type='%s'", $type);
 		return $wpdb->get_var($sql);
+	}
+
+	/**
+	 * Checks if there is at least one "logged" status in geslib_log table.
+	 *
+	 * @global wpdb $wpdb WordPress database abstraction object.
+	 *
+	 * @return bool
+	 *   Returns true if there is at least one row with status "logged",
+	 *   false otherwise.
+	 */
+	function checkLoggedStatus() {
+		global $wpdb;
+
+		// The table name, assuming 'geslib_log' is a custom table.
+		// If you have a table prefix, include it here.
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
+		// Prepare the SQL query to check for the "logged" status.
+		$sql = $wpdb->prepare( "SELECT COUNT(*) FROM
+					$table_name
+					WHERE status = %s
+					ORDER BY id='ASC'", 'logged' );
+
+		// Execute the query and get the result.
+		$count = $wpdb->get_var( $sql );
+		error_log($count);
+		// Return true if the count is greater than 0, false otherwise.
+		return $count > 0;
+	}
+
+	/**
+     * getLogQueuedFilename
+     *
+     * @return string
+     */
+    public function getLogQueuedFilename() :string {
+		global $wpdb;
+		$sql = $wpdb->prepare(
+			"SELECT filename FROM ". $wpdb->prefix . self::GESLIB_LOG_TABLE . " WHERE status = %s LIMIT 1",
+			'queued'
+		);
+		return ($wpdb->get_var($sql) == null) ? 'No file' : $wpdb->get_var($sql);
+	}
+
+
+	/**
+	 * setLogTableToLogged
+	 * Sets the status of all rows in the geslib_log table to "logged".
+	 *
+	 * @return bool
+	 */
+	public function setLogTableToLogged(): bool {
+		global $wpdb;
+
+		// Table name with the WordPress prefix
+		$tableName = $wpdb->prefix . self::GESLIB_LOG_TABLE;
+
+		// SQL to update the status
+		$sql = "UPDATE `$tableName` SET `status` = 'logged'";
+
+		// Execute the query
+		try {
+			$wpdb->query($sql);
+			return true;
+		} catch (\Exception $exception) {
+			error_log($exception->getMessage());
+			return false;
+		}
+
 	}
 
 }

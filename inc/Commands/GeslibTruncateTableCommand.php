@@ -2,6 +2,7 @@
 
 namespace Inc\Geslib\Commands;
 
+use Inc\Geslib\Api\GeslibApiDbLinesManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
 use WP_CLI;
 
@@ -9,10 +10,7 @@ use WP_CLI;
  * Class GeslibTruncateTableCommand
  */
 class GeslibTruncateTableCommand {
-    private $db;
-    public function __construct() {
-        $this->db = new GeslibApiDbManager();
-    }
+
 	public function register() {
         if ( class_exists( 'WP_CLI' ) ) {
             WP_CLI::add_command( 'geslib truncateTable', [$this, 'execute'] );
@@ -31,7 +29,8 @@ class GeslibTruncateTableCommand {
      * @when after_wp_load
      */
     public function execute( $args, $assoc_args ) {
-        $this->db->truncateGeslibLines();
+        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+        $geslibApiDbLinesManager->truncateGeslibLines();
         WP_CLI::line( 'Geslib lines has been emptied. ');
     }
 }

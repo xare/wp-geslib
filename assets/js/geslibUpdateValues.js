@@ -1,4 +1,7 @@
 function updateStatistics() {
+    let $terminalElement = jQuery('.terminal');
+    console.info($terminalElement);
+    $terminalElement.css('display', 'block');
     jQuery.ajax({
         url: ajax_object.ajax_url,
         type: 'post',
@@ -7,7 +10,7 @@ function updateStatistics() {
             nonce: ajax_object.nonce
         },
         success: function(response) {
-            if(response.success) {
+            if( response.success ) {
                 // Update your DOM elements here
                 const targets = [
                     'total-products',
@@ -31,6 +34,8 @@ function updateStatistics() {
                         $li.removeClass( 'darker-background' );
                     });
                 });
+                console.info(response.data['geslib-latest-loggers']);
+                $terminalElement.html(response.data['geslib-latest-loggers']);
             }
         }
     });

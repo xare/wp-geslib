@@ -2,7 +2,12 @@
 
 namespace Inc\Geslib\Base;
 
+use Inc\Geslib\Api\GeslibApiDbLinesManager;
+use Inc\Geslib\Api\GeslibApiDbLoggerManager;
+use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
+use Inc\Geslib\Api\GeslibApiDbProductsManager;
+use Inc\Geslib\Api\GeslibApiDbQueueManager;
 use Inc\Geslib\Api\GeslibApiReadFiles;
 use Inc\Geslib\Base\BaseController;
 
@@ -14,19 +19,25 @@ class GeslibUpdateValuesController extends BaseController {
 
     function getGeslibStatistics() {
         $geslibApiDbManager = new GeslibApiDbManager;
+        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+        $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiReadFiles = new GeslibApiReadFiles;
         // Get data
         $data = [
-            'total-products' => $geslibApiDbManager->get_total_number_of_products(),
+            'total-products' => $geslibApiDbProductsManager->getTotalNumberOfProducts(),
             'total-files' => $geslibApiReadFiles->countFilesInFolder(),
-            'total-logs' => $geslibApiDbManager->countGeslibLog(),
-            'total-lines' => $geslibApiDbManager->countGeslibLines(),
-            'total-lines-queue'=>  $geslibApiDbManager->countGeslibQueue('store_lines'),
-            'total-products-queue' => $geslibApiDbManager->countGeslibQueue('store_products'),
-            'queued-filename'=> $geslibApiDbManager->getLogQueuedFilename(),
-            'geslib-log-logged' => $geslibApiDbManager->countGeslibLogStatus('logged'),
-            'geslib-log-queued' => $geslibApiDbManager->countGeslibLogStatus('queued'),
-            'geslib-log-processed' => $geslibApiDbManager->countGeslibLogStatus('processed'),
+            'total-logs' => $geslibApiDbLogManager->countGeslibLog(),
+            'total-lines' => $geslibApiDbLinesManager->countGeslibLines(),
+            'total-lines-queue'=>  $geslibApiDbQueueManager->countGeslibQueue('store_lines'),
+            'total-products-queue' => $geslibApiDbQueueManager->countGeslibQueue('store_products'),
+            'queued-filename'=> $geslibApiDbLogManager->getLogQueuedFilename(),
+            'geslib-log-logged' => $geslibApiDbLogManager->countGeslibLogStatus('logged'),
+            'geslib-log-queued' => $geslibApiDbLogManager->countGeslibLogStatus('queued'),
+            'geslib-log-processed' => $geslibApiDbLogManager->countGeslibLogStatus('processed'),
+            'geslib-latest-loggers' => $geslibApiDbLoggerManager->getLatestLoggers(),
         ];
         // Send JSON response
         wp_send_json_success($data);

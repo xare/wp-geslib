@@ -2,7 +2,9 @@
 
 namespace Inc\Geslib\Api;
 
+use Inc\Geslib\Api\GeslibApiDbLinesManager;
 use Inc\Geslib\Api\GeslibApiWpManager;
+use Inc\Geslib\Api\GeslibApiDbLoggerManager;
 use WP_CLI;
 
 class GeslibApiLines {
@@ -16,17 +18,17 @@ class GeslibApiLines {
 			"action",
 			"geslib_id"
 	];
-	static $editorialDeleteKeys = [
+	static array $editorialDeleteKeys = [
 		"type",
 		"action",
 		"geslib_id"
 	];
-	static $categoriaDeleteKeys = [
+	static array $categoriaDeleteKeys = [
 			"type",
 			"action",
 			"geslib_id"
 	];
-	static $productKeys = [
+	static array $productKeys = [
 		"type",
 		"action",
 		"geslib_id",
@@ -90,7 +92,7 @@ class GeslibApiLines {
 		"unidades_compra",
 		"descuento_maximo"
 	];
-	static $editorialKeys = [
+	static array $editorialKeys = [
 		"type",
 		"action",
 		"geslib_id",
@@ -98,7 +100,7 @@ class GeslibApiLines {
 		"",
 		""
 	];
-	static $categoriaKeys = [
+	static array $categoriaKeys = [
 		"type",
 		"action",
 		"geslib_id",
@@ -106,13 +108,13 @@ class GeslibApiLines {
 		"",
 		""
 	];
-	static $authorKeys = [
+	static array $authorKeys = [
 		"type",
 		"action",
 		"geslib_id",
 		"name"
 	];
-	static $lineTypes = [
+	static array $lineTypes = [
 		'1L', // Editoriales
 		'1A', // Compañías discográficas
 		//"1P", // Familias de papelería
@@ -162,7 +164,7 @@ class GeslibApiLines {
 		//"LAGRDTV" // Agrupaciones de descuentos de ventas: Líneas
 	];
 	private $db;
-	private $mainFolderPath;
+	private string $mainFolderPath;
 	private $geslibSettings;
 	private $geslibApiSanitize;
 
@@ -173,11 +175,20 @@ class GeslibApiLines {
 		$this->geslibApiSanitize = new GeslibApiSanitize();
 	}
 
-	public function storeToLines(){
+	/**
+	 * storeToLines
+	 *
+	 * Send the data from the INTER*** file to the geslib_queue(type='store_lines') table.
+	 *
+	 * @return int
+	 */
+	public function storeToLines(): int{
+		$geslibApiDbLogManager = new GeslibApiDbLogManager;
+		$geslibApiDbQueueManager = new GeslibApiDbQueueManager;
 		// 1. Read the log table
-		$log_id = $this->db->getGeslibLoggedId();
-		$filename = $this->db->getGeslibLoggedFilename( $log_id );
-		$this->db->setLogStatus( $log_id, 'queued' );
+		$log_id = $geslibApiDbLogManager->getGeslibLoggedId();
+		$filename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
+		$geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
 		$fullPath = $this->mainFolderPath . $filename;
 
 		// 2. Read the file and store in lines table
@@ -207,13 +218,13 @@ class GeslibApiLines {
 			];
 			$batch[] = $item;
 			if (count($batch) >= $batch_size) {
-				$this->db->insertLinesIntoQueue($batch);
+				$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 				$batch = [];
 			}
 		}
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
-			$this->db->insertLinesIntoQueue($batch);
+			$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 		}
 
     	return $log_id;
@@ -245,6 +256,7 @@ class GeslibApiLines {
 	 * @return void
 	 */
 	public function readLine( string $line, int $log_id ) :void {
+		$geslibApiDbQueueManager = new GeslibApiDbQueueManager();
 		$data = explode( '|', $line ) ;
 		array_pop($data);
 
@@ -255,8 +267,8 @@ class GeslibApiLines {
 			if ( method_exists( $this, $function_name ) ) {
 				$this->{$function_name}($data, $log_id);
 			}
-			$index = (in_array( $data[0] ,['6E', '6TE','BIC'])) ? 1 : 2;
-			$this->db->deleteItemFromQueue('store_lines', $log_id, $data[$index]);
+			$index = (in_array( $data[0] ,['6E', '6TE','BIC','B'])) ? 1 : 2;
+			$geslibApiDbQueueManager->deleteItemFromQueue('store_lines', $log_id, (int) $data[$index]);
 
 		}
 
@@ -267,11 +279,12 @@ class GeslibApiLines {
 	 * //"type" | "action" | "geslib_id" |	"description" |	"author" | "pvp_ptas" |	"isbn" | "ean" |"num_paginas" |	"num_edicion" |	"origen_edicion" |"fecha_edicion" |	"fecha_reedicion" |	"año_primera_edicion" |"año_ultima_edicion" |"ubicacion" |"stock" |	"materia" |	"fecha_alta" |	"fecha_novedad" |"Idioma" |	"formato_encuadernacion" |"traductor" |"ilustrador" |"colección" |"numero_coleccion" |"subtitulo" |	"estado" |	"tmr" |	"pvp" |	"tipo_de_articulo" |"clasificacion" |"editorial" |	"pvp_sin_iva" |	"num_ilustraciones" |"peso" |"ancho" |"alto" |		"fecha_aparicion" |	"descripcion_externa" |	"palabras_asociadas" |			"ubicacion_alternativa" |"valor_iva" |"valoracion" |"calidad_literaria" |	"precio_referencia" | "cdu" |"en_blanco" |"libre_1" |"libre_2" | 			"premiado" |"pod" | "distribuidor_pod" | "codigo_old" | "talla" |			"color" |"idioma_original" |"titulo_original" |	"pack" |"importe_canon" |	"unidades_compra" |"descuento_maximo"
 	 * // GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
 	 *
-	* @param  mixed $data
+	 * @param  mixed $data
 	 * @param  int $log_id
 	 * @return void
 	 */
 	private function processGP4( array $data, int $log_id ) {
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		if ($data[1] === 'B') {
 			$keys = self::$productDeleteKeys;
 		} elseif (in_array($data[1], ['A', 'M'])) {
@@ -280,10 +293,10 @@ class GeslibApiLines {
 		if (! isset($keys)) return false;
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-		$this->db->insertData( $content_array, $data[1], $log_id, 'product' );
+		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'product' );
 	}
 
-	private function process6E($data, $log_id) {
+	private function process6E($data, int $log_id) {
 		// Procesa las líneas 6E aquí
 		// 6E|Articulo|Contador|Texto|
 		// 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.\n\nAcompanyant les imatges, les paraules antigues de la Mediterr�nia. Ausi�s March, Estell�s, al-Russaf�, Llach, Espriu, Aub, Ibn Arab�, Lorca, Darwix o Kavafis. Veus de les tradicions que ens han forjat com a civilitzacions. Per� tamb� peda�os de relats i hist�ries poc conegudes que l'autor va descobrir durant tres mesos de conviv�ncia en aquest tros de Palestina. Hist�ries de saviesa i dolor. Hist�ries de paci�ncia i perseveran�a. Hist�ries de p�rdua i renaixen�a. Hist�ries de la bellesa oculta de Gaza.|
@@ -293,26 +306,35 @@ class GeslibApiLines {
 		$this->mergeContent( $geslib_id, $content_array, 'product');
 	}
 
-	private function process6TE(mixed $data, int $log_id) {
+	private function process6TE( array $data, int $log_id ) {
 		// Procesa las líneas 6TE aquí
 	}
 
-	private function process1L(array $data, int $log_id) {
+	private function process1L( array $data, int $log_id ) {
 		//1L|B|codigo_editorial
 		//1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
 		//1L|A|1|VARIAS|VARIAS|ES|
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		if ($data[1] === 'B') {
 			$keys = self::$editorialDeleteKeys;
 		} elseif (in_array($data[1], ['A', 'M'])) {
 			$keys = self::$editorialKeys;
 		}
-		if (! isset($keys)) return false;
+		if (! isset( $keys )) return false;
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
-		$this->db->insertData( $content_array, $data[1], $log_id , 'editorial');
+		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'editorial');
 	}
 
-	private function process3( $data, $log_id ) {
+	/**
+	 * process3
+	 *
+	 * @param  array $data
+	 * @param  int $log_id
+	 * @return void
+	 */
+	private function process3( array $data, int $log_id ) {
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		//Add categories
 		//3|A|01|Cartes|||
 		if ($data[1] === 'B') {
@@ -323,7 +345,7 @@ class GeslibApiLines {
 		if ( !isset($keys)) return false;
 		$content_array = array_combine( $keys, $data );
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
-		$this->db->insertData( $content_array, $data[1], $log_id , 'product_cat');
+		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'product_cat');
 	}
 
 	private function process5( $data, $log_id ) {
@@ -352,6 +374,7 @@ class GeslibApiLines {
 	 * @return void
 	 */
 	private function processAUT( $data, $log_id ) {
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		if (in_array( $data[1], ['A','M'] )){
 			// Insert or Update
 			$content_array = array_combine( self::$authorKeys, $data );
@@ -360,7 +383,7 @@ class GeslibApiLines {
 			// Delete
 			$content_array = array_combine( self::$authorDeleteKeys, $data );
 		}
-		$this->db->insertData( $content_array, $data[1], $log_id, 'autor' );
+		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'autor' );
 	}
 	/**
 	 * processAUTBIO
@@ -373,7 +396,7 @@ class GeslibApiLines {
 	private function processAUTBIO( $data, int $log_id ) {
 		$content_array['biografia'] = $data[2];
 		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-		$this->mergeContent( $data[1], $data[2], 'autor');
+		$this->mergeContent( $data[1], $content_array, 'autor');
 	}
 
 	/**
@@ -385,9 +408,10 @@ class GeslibApiLines {
 	 * @return void
 	 */
 	private function processB( $data, int $log_id ) {
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		$content_array['stock'] = $data[2];
 		$content_array['geslib_id'] = $data[1];
-		$this->db->insertData($content_array, 'stock', $log_id, 'product');
+		$geslibApiDbLinesManager->insertData($content_array, 'stock', $log_id, 'product');
 	}
 
 
@@ -406,9 +430,9 @@ class GeslibApiLines {
 						string $type,
 						int $log_id = 0,
 						string $action = '' ) {
-
+		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		//1. Get the content given the $geslib_id
-		$original_content = $this->db->fetchContent( $geslib_id, $type );
+		$original_content = $geslibApiDbLinesManager->fetchContent( $geslib_id, $type );
 		if ( !$original_content ) return error_log("error at Merge Content");
 
 		$original_content_array = json_decode( $original_content, true);
@@ -440,16 +464,16 @@ class GeslibApiLines {
 		$content = json_encode($original_content_array);
 		if ( ! $content ) return FALSE;
 
-		$this->db->updateGeslibLines( $geslib_id, $type, $content );
+		$geslibApiDbLinesManager->updateGeslibLines( $geslib_id, $type, $content );
 	}
 
 	/**
 	 * unnecessaryLine
 	 *
-	 * @param  mixed $line
+	 * @param  string $line
 	 * @return boolean
 	 */
-	public function isUnnecessaryLine(string $line) :bool {
+	public function isUnnecessaryLine( string $line ) :bool {
 		return strpos($line, '< Genérica >') !== false;
 	}
 	/**
@@ -485,7 +509,7 @@ class GeslibApiLines {
 	 * @return string|bool
 	 *   The input line if the type is in product key, FALSE otherwise.
 	 */
-	public function isInProductKey($line) {
+	public function isInProductKey(string $line ) {
 		return in_array( explode( '|', $line )[0], self::$lineTypes) ? $line : false;
 	}
 

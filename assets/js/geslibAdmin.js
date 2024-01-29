@@ -37,9 +37,9 @@ async function makeAjaxRequest( action, additionalData = null ) {
         credentials: "same-origin",
         body: formData
     });
-    console.info( response );
     try {
         const jsonResponse = await response.json();
+        console.info( response );
         if (jsonResponse.success) {
             return jsonResponse;
         } else {

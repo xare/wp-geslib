@@ -6,7 +6,9 @@
 namespace Inc\Geslib\Commands;
 
 use Inc\Geslib\Api\Encoding;
+use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
+use Inc\Geslib\Api\GeslibApiDbQueueManager;
 use Inc\Geslib\Api\GeslibApiLog;
 use Inc\Geslib\Api\GeslibApiLines;
 use Inc\Geslib\Api\GeslibApiReadFiles;
@@ -49,15 +51,16 @@ class GeslibLinesCommand {
         $geslibApiLog = new GeslibApiLog();
         $geslibApiLines = new GeslibApiLines();
         $geslibApiDb = new GeslibApiDbManager();
-        $log_id = $geslibApiDb->getGeslibLoggedId();
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
         $geslibApiLines->storeToLines();
-        $geslibApiDb->setLogStatus($log_id, 'queued');
+        $geslibApiDbLogManager->setLogStatus($log_id, 'queued');
         WP_CLI::line( 'Data has not been saved to geslib_lines!' );
     }
 
     public function processStoreLines( ) {
-        $geslibApiDb = new GeslibApiDbManager();
-        $geslibApiDb->processFromQueue('store_lines');
+        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+        $geslibApiDbQueueManager->processFromQueue('store_lines');
     }
 
 

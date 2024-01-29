@@ -3,6 +3,7 @@
 namespace Inc\Geslib\Commands;
 
 use Inc\Geslib\Api\GeslibApiDbManager;
+use Inc\Geslib\Api\GeslibApiDbProductsManager;
 use WP_CLI;
 use WP_Query;
 
@@ -26,8 +27,8 @@ class GeslibDeleteAllProductsCommand {
      *
      */
     public function execute( $args, $assoc_args ) {
-        $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->deleteAllProducts();
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+        $geslibApiDbProductsManager->deleteAllProducts();
 
         WP_CLI::success( 'All products have been deleted.' );
     }

@@ -1,13 +1,22 @@
 <?php
-    use Inc\Geslib\Api\GeslibApiDbManager;
-    use Inc\Geslib\Api\GeslibApiLines;
-    use Inc\Geslib\Api\GeslibApiLog;
-    use Inc\Geslib\Api\GeslibApiReadFiles;
+
+use Inc\Geslib\Api\GeslibApiDbLinesManager;
+use Inc\Geslib\Api\GeslibApiDbLogManager;
+use Inc\Geslib\Api\GeslibApiDbManager;
+use Inc\Geslib\Api\GeslibApiDbProductsManager;
+use Inc\Geslib\Api\GeslibApiDbQueueManager;
+use Inc\Geslib\Api\GeslibApiLines;
+use Inc\Geslib\Api\GeslibApiLog;
+use Inc\Geslib\Api\GeslibApiReadFiles;
 
     $geslibApiDbManager = new GeslibApiDbManager;
     $geslibApiReadFiles = new GeslibApiReadFiles;
     $geslibApiLog = new GeslibApiLog;
     $geslibApiLines = new GeslibApiLines;
+    $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+    $geslibApiDbLogManager = new GeslibApiDbLogManager;
+    $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+    $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
 
     $geslib_admin_notice = get_option('geslib_admin_notice', '');
     if ( !empty( $geslib_admin_notice ) ) {
@@ -42,39 +51,39 @@
         </li>
          <li>Archivos registrados en la tabla logs:<br />
             <strong data-target="total-logs">
-                <?php echo $geslibApiDbManager->countGeslibLog(); ?>
+                <?php echo $geslibApiDbLogManager->countGeslibLog(); ?>
             </strong>
             <br />
             Logged:
             <strong data-target="geslib-log-logged">
-                <?php echo $geslibApiDbManager->countGeslibLogStatus('logged'); ?>
+                <?php echo $geslibApiDbLogManager->countGeslibLogStatus('logged'); ?>
             </strong>
             <br />
             Queued:
             <strong data-target="geslib-log-queued">
-                <?php echo $geslibApiDbManager->countGeslibLogStatus('queued'); ?>
+                <?php echo $geslibApiDbLogManager->countGeslibLogStatus('queued'); ?>
             </strong>
             <br />
             Processed:
             <strong data-target="geslib-log-processed">
-                <?php echo $geslibApiDbManager->countGeslibLogStatus('processed'); ?>
+                <?php echo $geslibApiDbLogManager->countGeslibLogStatus('processed'); ?>
             </strong>
         </li>
         <li>Archivo en la cola de procesamiento:<br />
-            <strong data-target="queued-filename"><?php echo $geslibApiDbManager->getLogQueuedFilename(); ?></strong>
+            <strong data-target="queued-filename"><?php echo $geslibApiDbLogManager->getLogQueuedFilename(); ?></strong>
         </li>
         <li>Tareas en la cola "store_lines":<br />
-            <strong data-target="total-lines-queue"><?php echo $geslibApiDbManager->countGeslibQueue('store_lines'); ?></strong>
+            <strong data-target="total-lines-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_lines'); ?></strong>
         </li>
         <li>Archivos registrados en la tabla lines:<br />
-            <strong data-target="total-lines"><?php echo $geslibApiDbManager->countGeslibLines(); ?></strong>
+            <strong data-target="total-lines"><?php echo $geslibApiDbLinesManager->countGeslibLines(); ?></strong>
         </li>
 
         <li>Tareas en la cola "store_products":<br />
-            <strong data-target="total-products-queue"><?php echo $geslibApiDbManager->countGeslibQueue('store_products'); ?></strong>
+            <strong data-target="total-products-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_products'); ?></strong>
         </li>
         <li>Productos almacenados:<br />
-            <strong data-target="total-products"><?php echo $geslibApiDbManager->get_total_number_of_products(); ?></strong>
+            <strong data-target="total-products"><?php echo $geslibApiDbProductsManager->getTotalNumberOfProducts(); ?></strong>
         </li>
     </ul>
     <form method="post" action="#tab-1" id="geslibProcess">

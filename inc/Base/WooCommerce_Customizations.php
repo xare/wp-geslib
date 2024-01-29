@@ -23,9 +23,8 @@ class WooCommerce_Customizations {
     }
 
     public function save_geslib_id_field( $post_id ) {
-        $geslib_id = isset( $_POST['geslib_id'] ) ? $_POST['geslib_id'] : '';
-        $geslib_id = sanitize_text_field( $geslib_id );
-        update_post_meta( $post_id, 'geslib_id', esc_attr( $geslib_id ) );
+        $geslib_id = isset( $_POST['geslib_id'] ) ? $_POST['geslib_id'] : 0;
+        update_post_meta( $post_id, 'geslib_id', $geslib_id );
     }
 
 }

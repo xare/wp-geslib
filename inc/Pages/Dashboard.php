@@ -9,20 +9,21 @@ use Inc\Geslib\Api\Callbacks\AdminCallbacks;
 class Dashboard extends BaseController {
     public $settings;
     public $pages = [];
+	public $subpages = []; // Add this line to define subpages
     public $callbacks;
-
 
     public function register() {
         $this->settings = new SettingsApi();
         $this->callbacks = new AdminCallbacks();
         $this->setPages();
+		$this->setSubpages();
         $this->setSettings();
 		$this->setSections();
 		$this->setFields();
         $this->settings
 			->addPages( $this->pages )
 			->withSubPage( 'Dashboard' )
-			//->addSubPages( $this->subpages )
+			->addSubPages( $this->subpages )
 			->register();
         /* $this->storeGeslib(); */
 
@@ -46,6 +47,20 @@ class Dashboard extends BaseController {
 			]
 		];
 	}
+
+	// Define this new method to add your subpages
+    public function setSubpages() {
+        $this->subpages = [
+            [
+                'parent_slug' => 'geslib', // Parent menu slug
+                'page_title' => 'Geslib Logger', // Page title
+                'menu_title' => 'Geslib Logger', // Menu title
+                'capability' => 'manage_options', // Capability
+                'menu_slug' => 'geslib_logger', // Menu slug
+                'callback' => [$this->callbacks, 'adminGeslibLogger'] // Callback function, define it in AdminCallbacks class
+            ]
+        ];
+    }
 
     public function setSettings()
 	{

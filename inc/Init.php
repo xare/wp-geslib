@@ -25,10 +25,11 @@ use Inc\Geslib\Commands\GeslibTruncateTableCommand;
 use Inc\Geslib\Base\GeslibStoreProductsFormController;
 use Inc\Geslib\Base\GeslibUpdateValuesController;
 use Inc\Geslib\Commands\GeslibQueueCommand;
+use Inc\Geslib\Commands\GeslibProcessAllCommand;
 use Inc\Geslib\Pages\Dashboard;
 
-final class Init
-{
+final class Init {
+
   /**
    * Store all the classes inside an array
    *
@@ -54,6 +55,7 @@ final class Init
       GeslibProductController::class,
       GeslibEditorialController::class,
       GeslibStoreProductsFormController::class,
+      GeslibProcessAllCommand::class,
       Enqueue::class,
       Dashboard::class,
       WooCommerce_Customizations::class,

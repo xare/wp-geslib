@@ -10,6 +10,10 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
 use Inc\Geslib\Api\GeslibApiStoreData;
 use Inc\Geslib\Base\BaseController;
 use Inc\Dilve\Api\DilveApi;
+use Inc\Geslib\Api\GeslibApiDbLinesManager;
+use Inc\Geslib\Api\GeslibApiDbLogManager;
+use Inc\Geslib\Api\GeslibApiDbProductsManager;
+use Inc\Geslib\Api\GeslibApiDbQueueManager;
 
 /**
  * @class GeslibStoreProductsFormController
@@ -55,10 +59,10 @@ class GeslibStoreProductsFormController extends BaseController
 
         add_action('admin_notices', [ $this, 'displayAdminNotice' ]);
 
-        if (!wp_next_scheduled('geslib_process_queue')) {
+        /* if (!wp_next_scheduled('geslib_process_queue')) {
             wp_schedule_event(time(), 'daily', 'geslib_process_queue');
         }
-        add_action('geslib_process_queue', [$this, 'processAll']);
+        add_action('geslib_process_queue', [$this, 'processAll']); */
     }
 
     /**
@@ -116,8 +120,8 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleProcessLinesQueue() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $geslibApiDb = new GeslibApiDbManager();
-        $geslibApiDb->processFromQueue('store_lines');
+        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+        $geslibApiDbQueueManager->processFromQueue('store_lines');
         update_option('geslib_admin_notice', 'Creada la cola de Lines');
         wp_send_json_success(['message' => 'Creada la cola de Lines. Puedes verlo en la pestaña "Queues".']);
     }
@@ -129,8 +133,8 @@ class GeslibStoreProductsFormController extends BaseController
      */
     public function ajaxHandleLogQueue() {
         $check_ajax_referer = check_ajax_referer( 'geslib_log_queue', 'geslib_log_queue_nonce' );
-        $geslibApiDb = new GeslibApiDbManager;
-        $geslibApiDb->setLogStatus( $_POST['log_id'], 'queued' );
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $geslibApiDbLogManager->setLogStatus( $_POST['log_id'], 'queued' );
         update_option( 'geslib_admin_notice', 'Geslib Log queued' );
         wp_send_json_success( [ 'message' => 'Geslib Log queued' ]);
     }
@@ -142,15 +146,15 @@ class GeslibStoreProductsFormController extends BaseController
      */
     public function ajaxHandleLogUnqueue() {
         check_ajax_referer('geslib_log_queue', 'geslib_log_queue_nonce');
-        $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->setLogStatus( $_POST['log_id'], 'logged' );
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $geslibApiDbLogManager->setLogStatus( $_POST['log_id'], 'logged' );
         update_option( 'geslib_admin_notice', 'Geslib Log unqueued');
         wp_send_json_success( [ 'message' => 'Geslib Log unqueued' ]);
     }
     public function ajaxHandleTruncateLog() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $geslibApiDbManager = new GeslibApiDbManager;
-        if( !$geslibApiDbManager->truncateGeslibLogs()) {
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        if( !$geslibApiDbLogManager->truncateGeslibLogs()) {
             update_option('geslib_admin_notice', 'ERROR: Geslib Log NOT Truncated');
             wp_send_json_success(['message' => 'ERROR: Geslib Log NOT Truncated']);
         }
@@ -194,8 +198,8 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleProcessProductsQueue() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
 
-        $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->processFromQueue('store_products');
+        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+        $geslibApiDbQueueManager->processFromQueue('store_products');
         update_option('geslib_admin_notice', 'Procesando la cola PRODUCTOS');
         wp_send_json_success(['message' => 'Procesada la cola PRODUCTOS.']);
     }
@@ -205,15 +209,19 @@ class GeslibStoreProductsFormController extends BaseController
         $geslibApiReadFiles = new GeslibApiReadFiles();
         $geslibApiLines = new GeslibApiLines();
         $geslibApiDbManager = new GeslibApiDbManager();
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
         $dilveApi = new DilveApi();
-        while( $geslibApiDbManager->checkLoggedStatus() ) {
+        while( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $geslibApiReadFiles->readFolder();
             $log_id = $geslibApiLines->storeToLines();
-            $geslibApiDbManager->processFromQueue('store_lines');
-            $geslibApiDbManager->storeProducts();
-            $geslibApiDbManager->processFromQueue('store_products');
-            $geslibApiDbManager->truncateGeslibLines();
-            $geslibApiDbManager->setLogStatus( $log_id, 'processed');
+            $geslibApiDbQueueManager->processFromQueue('store_lines');
+            $geslibApiDbProductsManager->storeProducts();
+            $geslibApiDbQueueManager->processFromQueue('store_products');
+            $geslibApiDbLinesManager->truncateGeslibLines();
+            $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
             //
         }
         //$dilveApi->scanProducts();
@@ -223,8 +231,8 @@ class GeslibStoreProductsFormController extends BaseController
 
     public function ajaxHandleSetToLogged() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $geslibApiDb = new GeslibApiDbManager;
-        $geslibApiDb->setLogTableToLogged();
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $geslibApiDbLogManager->setLogTableToLogged();
         update_option('geslib_admin_notice', 'El registro ha sido reinicializado.');
         wp_send_json_success(['message' => 'El registro ha sido reinicializado.']);
     }
@@ -240,15 +248,15 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleDeleteProducts() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
 
-        $geslibApiDbManager = new GeslibApiDbManager;
-        $geslibApiDbManager->deleteAllProducts();
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+        $geslibApiDbProductsManager->deleteAllProducts();
         update_option( 'geslib_admin_notice', 'Geslib Products Deleted' );
         wp_send_json_success( ['message' => 'Deletion task has been queued', 'task_id' => $task_id] );
     }
     public function ajaxHandleTruncateLines(){
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
-        $geslibApiDbManager = new GeslibApiDbManager;
-        if ( !$geslibApiDbManager->truncateGeslibLines()) {
+        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+        if ( !$geslibApiDbLinesManager->truncateGeslibLines()) {
             update_option('geslib_admin_notice', 'ERROR: Geslib Lines NOT Truncated');
             wp_send_json_success(['message' => 'ERROR: Geslib Lines NOT Truncated']);
         }
@@ -312,15 +320,19 @@ class GeslibStoreProductsFormController extends BaseController
         $geslibApiReadFiles = new GeslibApiReadFiles();
         $geslibApiLines = new GeslibApiLines();
         $geslibApiDbManager = new GeslibApiDbManager();
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+        $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+        $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $dilveApi = new DilveApi();
-        while( $geslibApiDbManager->checkLoggedStatus() ) {
+        while( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $geslibApiReadFiles->readFolder();
             $log_id = $geslibApiLines->storeToLines();
-            $geslibApiDbManager->processFromQueue('store_lines');
-            $geslibApiDbManager->storeProducts();
-            $geslibApiDbManager->processFromQueue('store_products');
-            $geslibApiDbManager->truncateGeslibLines();
-            $geslibApiDbManager->setLogStatus( $log_id, 'processed');
+            $geslibApiDbQueueManager->processFromQueue('store_lines');
+            $geslibApiDbProductsManager->storeProducts();
+            $geslibApiDbQueueManager->processFromQueue('store_products');
+            $geslibApiDbLinesManager->truncateGeslibLines();
+            $geslibApiDbLogManager->setLogStatus( $log_id, 'processed');
         }
     }
 }

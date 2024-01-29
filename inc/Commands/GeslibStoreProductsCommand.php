@@ -5,7 +5,12 @@
 
 namespace Inc\Geslib\Commands;
 
+use Inc\Geslib\Api\GeslibApiDbLinesManager;
+use Inc\Geslib\Api\GeslibApiDbLogManager;
 use Inc\Geslib\Api\GeslibApiDbManager;
+use Inc\Geslib\Api\GeslibApiDbProductsManager;
+use Inc\Geslib\Api\GeslibApiDbQueueManager;
+use Inc\Geslib\Api\GeslibApiLines;
 use WP_CLI;
 
 class GeslibStoreProductsCommand {
@@ -31,7 +36,7 @@ class GeslibStoreProductsCommand {
     }
   }
 
-  /**
+   /**
     * Say hello
     *
     * ## OPTIONS
@@ -49,11 +54,14 @@ class GeslibStoreProductsCommand {
       if ( isset( $assoc_args[ 'process-store-products' ] ) ) {
         $this->processStoreProducts();
         return;
-    }
-      $this->db->storeProducts();
+      }
+      $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+      $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+      $geslibApiDbLogManager = new GeslibApiDbLogManager;
+      $geslibApiDbProductsManager->storeProducts();
       $geslibApiLines = new GeslibApiLines;
-      $this->db->setLogStatus( $log_id, 'processed' );
-      $this->db->truncateGeslibLines();
+      $geslibApiDbLogManager->setLogStatus( $log_id, 'processed' );
+      $geslibApiDbLinesManager->truncateGeslibLines();
       WP_CLI::line( "Store products" );
     }
 
@@ -67,6 +75,8 @@ class GeslibStoreProductsCommand {
       $table_name = $wpdb->prefix . 'geslib_queues';
 
       $geslibApiDbManager = new GeslibApiDbManager;
+      $geslibApiDbProductsManager = new GeslibApiDbProductsManager;
+      $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
 
       // Select tasks of type 'store_products' that are pending
       $pending_products = $wpdb->get_results(
@@ -79,12 +89,12 @@ class GeslibStoreProductsCommand {
         if ($task->type === 'store_products') {
           WP_CLI::line("Processing product for Geslib ID: {$task->geslib_id}");
           //if($task['action'] != 'B')
-            $geslibApiDbManager->storeProduct($task->geslib_id, $task->data);
-            $geslibApiDbManager->deleteItemFromQueue($task->type,$task->log_id,$task->geslib_id);
+            $geslibApiDbProductsManager->storeProduct( $task->geslib_id, $task->data );
+            $geslibApiDbQueueManager->deleteItemFromQueue( $task->type,$task->log_id, (int) $task->geslib_id );
             //delete from queue
 
           //else {
-          //  $geslibApiDbManager->deleteProduct($task['geslib_id']);
+          //  $geslibApiDbbProductsManager->deleteProduct($task['geslib_id']);
           //}
           WP_CLI::line("Processed product with geslib_id: {$task->geslib_id}");
         }

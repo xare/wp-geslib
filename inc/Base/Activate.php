@@ -65,7 +65,7 @@ namespace Inc\Geslib\Base;
       start_date datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
       end_date datetime DEFAULT NULL,
       status text NOT NULL,
-      `lines_count` int(11) NOT NULL,
+      lines_count int(11) NOT NULL,
       PRIMARY KEY (id)
     ) $charset_collate;";
 
@@ -82,25 +82,24 @@ namespace Inc\Geslib\Base;
           ) $charset_collate;";
 
       $queue_sql = "CREATE TABLE $queue_table_name (
-        `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-        `log_id` mediumint(9) unsigned,
-        `geslib_id` text,
-        `type` varchar(255) NOT NULL,
-        `data` text,
-        PRIMARY KEY (`id`)
-      ) $charset_collate;
-      ";
+        id int(11) unsigned NOT NULL AUTO_INCREMENT,
+        log_id mediumint(9) unsigned,
+        geslib_id text,
+        type varchar(255) NOT NULL,
+        data text,
+        PRIMARY KEY (id)
+      ) $charset_collate;";
 
       $logger_sql = "CREATE TABLE $logger_table_name(
-        `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-        `log_id` mediumint(9) unsigned,
-        `geslib_id` text,
-        `action` varchar(255) NOT NULL,
-        `entity` varchar(255) NOT NULL,
-        `metadata` text,
+        id int(11) unsigned NOT NULL AUTO_INCREMENT,
+        log_id mediumint(9) unsigned,
+        geslib_id text,
+        action varchar(255) NOT NULL,
+        entity varchar(255) NOT NULL,
+        metadata text,
+        date datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
         PRIMARY KEY (`id`)
-      ) $charset_collate;
-      ";
+      ) $charset_collate;";
 
       require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
       dbDelta( $log_sql );

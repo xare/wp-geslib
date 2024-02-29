@@ -14,6 +14,12 @@
         public function adminGeslibLogger() {
             return require_once("{$this->plugin_templates_path}/adminGeslibLogger.php");
         }
+        public function adminLogTable() {
+            return require_once("{$this->plugin_templates_path}/adminGeslibLogs.php");
+        }
+        public function adminLinesTable() {
+            return require_once("{$this->plugin_templates_path}/adminGeslibLines.php");
+        }
 
         public function textSanitize( $input ) {
             $output = get_option('geslib_settings');

@@ -39,8 +39,7 @@ class Cron extends BaseController {
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiStoreData = new GeslibApiStoreData;
-        $dilveApi = new DilveApi();
-        while( $loggedStatus = $geslibApiDbLogManager->checkLoggedStatus() ) {
+        while( $geslibApiDbLogManager->checkLoggedStatus() ) {
             $geslibApiReadFiles->readFolder();
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Current Log_id', 'geslib_log', [

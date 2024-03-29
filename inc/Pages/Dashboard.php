@@ -51,6 +51,22 @@ class Dashboard extends BaseController {
 	// Define this new method to add your subpages
     public function setSubpages() {
         $this->subpages = [
+			[
+                'parent_slug' => 'geslib', // Parent menu slug
+                'page_title' => 'Geslib Files', // Page title
+                'menu_title' => 'Geslib Files', // Menu title
+                'capability' => 'manage_options', // Capability
+                'menu_slug' => 'geslib_files', // Menu slug
+                'callback' => [$this->callbacks, 'adminFilesTable'] // Callback function, define it in AdminCallbacks class
+			],
+			[
+                'parent_slug' => 'geslib', // Parent menu slug
+                'page_title' => 'Geslib Log', // Page title
+                'menu_title' => 'Geslib Log', // Menu title
+                'capability' => 'manage_options', // Capability
+                'menu_slug' => 'geslib_log', // Menu slug
+                'callback' => [$this->callbacks, 'adminLogTable'] // Callback function, define it in AdminCallbacks class
+			],
             [
                 'parent_slug' => 'geslib', // Parent menu slug
                 'page_title' => 'Geslib Logger', // Page title
@@ -61,19 +77,19 @@ class Dashboard extends BaseController {
 			],
 			[
                 'parent_slug' => 'geslib', // Parent menu slug
-                'page_title' => 'Geslib Logs', // Page title
-                'menu_title' => 'Geslib Logs', // Menu title
-                'capability' => 'manage_options', // Capability
-                'menu_slug' => 'geslib_logs', // Menu slug
-                'callback' => [$this->callbacks, 'adminLogTable'] // Callback function, define it in AdminCallbacks class
-			],
-			[
-                'parent_slug' => 'geslib', // Parent menu slug
                 'page_title' => 'Geslib Lines', // Page title
                 'menu_title' => 'Geslib Lines', // Menu title
                 'capability' => 'manage_options', // Capability
                 'menu_slug' => 'geslib_lines', // Menu slug
                 'callback' => [$this->callbacks, 'adminLinesTable'] // Callback function, define it in AdminCallbacks class
+			],
+			[
+                'parent_slug' => 'geslib', // Parent menu slug
+                'page_title' => 'Geslib Queues', // Page title
+                'menu_title' => 'Geslib Queues', // Menu title
+                'capability' => 'manage_options', // Capability
+                'menu_slug' => 'geslib_queues', // Menu slug
+                'callback' => [$this->callbacks, 'adminQueuesTable'] // Callback function, define it in AdminCallbacks class
 			],
         ];
     }

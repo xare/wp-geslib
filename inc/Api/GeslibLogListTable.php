@@ -6,8 +6,6 @@ use Inc\Geslib\Api\GeslibApiDbManager;
 
 class GeslibLogListTable extends WP_List_Table {
 
-    private $cegalApiDbLoggerManager;
-
     public function __construct() {
         parent::__construct([
             'singular' => 'geslib_log',  // Singular label of the table
@@ -17,6 +15,7 @@ class GeslibLogListTable extends WP_List_Table {
 
     }
     public function prepare_items() {
+        $this->process_bulk_action();
         global $wpdb;
         $geslibApiDbLogManager = new GeslibApiDbLogManager;
         $logTable = $wpdb->prefix . $geslibApiDbLogManager::GESLIB_LOG_TABLE;
@@ -36,7 +35,7 @@ class GeslibLogListTable extends WP_List_Table {
         }
         if ( isset( $_POST['filter_filenames']) && !empty( $_POST['filter_filenames'] )) {
             $filenames = sanitize_text_field($_POST['filter_filenames']);
-            $where = $wpdb->prepare(' WHERE filenames = %d', $filenames);
+            $where = $wpdb->prepare(' WHERE filename = %d', $filenames);
         }
         if ( isset( $_POST['filter_lines_count'] ) && !empty( $_POST['filter_lines_count'] )) {
             $lines_count = sanitize_text_field( $_POST['filter_lines_count'] );
@@ -52,7 +51,7 @@ class GeslibLogListTable extends WP_List_Table {
             $where = " WHERE start_date LIKE '%{$search_term}%'
                                         OR end_date LIKE '%{$search_term}%'
                                         OR status LIKE '%{$search_term}%'
-                                        OR filenames = {$search_term}
+                                        OR filename = {$search_term}
                                         OR lines_count = {$search_term}";
         }
         // First, get the total count of items
@@ -94,11 +93,12 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function get_columns() {
         $columns = [
+            'cb' => '<input type="checkbox" />',
             'id' => 'ID',
+            'filename' => 'Filename',
             'start_date' => 'Start Date',
             'end_date' => 'End Date',
             'status' => 'Status',
-            'filename' => 'Filename',
             'lines_count' => 'Lines Count',
         ];
         return $columns;
@@ -110,24 +110,90 @@ class GeslibLogListTable extends WP_List_Table {
 
     public function get_sortable_columns() {
         return [
-            'id' => ['id', false],
-            'start_date' => ['start_date', false],
-            'start_date' => ['start_date', false],
+            'cb' => ['cb', false],
+            'id' => ['id', true],
+            'filename' => ['filename', true],
+            'start_date' => ['start_date', true],
+            'end_date' => ['end_date', false],
             'status' => ['status', false],
-            'filename' => ['filename', false],
             'lines_count' => ['lines_count', false],
         ];
     }
 
     public function column_default( $item, $column_name ) {
         return match($column_name) {
+            'cb' => $item[$column_name],
             'id' => $item[$column_name],
+            'filename' => $item[$column_name],
             'start_date' => $item[$column_name],
             'end_date' => $item[$column_name],
             'status' => $item[$column_name],
-            'filenames' => $item[$column_name],
             'lines_count' => $item[$column_name],
             default => 'no value',
         };
+    }
+
+    public function column_filename($item) {
+        $action = [
+            'update' => sprintf('<a href="?page=%s&action=%s&log_id=%s" class="update-status">Update Status</a>', $_GET['page'], 'update-status', $item['id']),
+        ];
+        return sprintf('%1$s %2$s', $item['filename'], $this->row_actions($action));
+    }
+
+    /**
+     * Render the bulk edit checkbox
+     *
+     * @param array $item
+     *
+     * @return string
+     */
+    function column_cb( $item ) {
+        return sprintf(
+            '<input type="checkbox" name="bulk-delete[]" value="%s" />', $item['ID']
+        );
+    }
+
+   /**
+    * Returns an associative array containing the bulk action
+    *
+    * @return array
+    */
+    public function get_bulk_actions() {
+        $actions = [
+            'bulk-update-status' => 'Update Status'
+        ];
+
+        return $actions;
+    }
+
+    public function update_log(int $log_id){
+        global $wpdb;
+        $wpdb->update($wpdb->prefix."geslib_log",
+                        [ 'status' => 'logged' ],
+                        [ 'id' => $log_id ]);
+    }
+
+    public function process_bulk_action() {
+        //if ( 'bulk-update-status' === $this->current_action() ) {
+            // In our file that handles the request, verify the nonce.
+            /* $nonce = esc_attr( $_REQUEST['_wpnonce'] );
+            if ( ! wp_verify_nonce( $nonce, 'sp_delete_customer' ) ) {
+                die( 'Go get a life script kiddies' );
+            } else {
+                wp_redirect( esc_url( add_query_arg() ) );
+                exit;
+            } */
+            // If the delete bulk action is triggered
+            if ( ( isset( $_REQUEST['action'] ) && $_REQUEST['action'] == 'update-status' )
+            || ( isset( $_REQUEST['action2'] ) && $_REQUEST['action2'] == 'update-status' )
+            ) {
+                $log_id = $_REQUEST['log_id'];
+                //foreach ($log_ids as $log_id) {
+                $this->update_log($log_id);
+                //}
+            wp_redirect( esc_url( add_query_arg() ) );
+            exit;
+            }
+        //}
     }
 }

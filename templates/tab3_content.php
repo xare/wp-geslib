@@ -78,31 +78,87 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
                     <span><?php echo $countLines; ?></span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['GP4A'] ;?></span>
+                    <span>
+                        <?php
+                        if ( $lineCounts['GP4A'] )
+                            echo $lineCounts['GP4A'] ;
+                        else
+                            echo '0';
+                    ?></span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['GP4M'] ;?></span>
+                    <span>
+                        <?php
+                        if ( $lineCounts['GP4M'] )
+                            echo $lineCounts['GP4M'] ;
+                        else
+                            echo '0';
+                        ?>
+                    </span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['GP4B'] ;?></span>
+                <span>
+                        <?php
+                        if ( $lineCounts['GP4B'] )
+                            echo $lineCounts['GP4B'] ;
+                        else
+                            echo '0';
+                        ?>
+                    </span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['1LA'] ;?></span>
+                <span>
+                        <?php
+                        if ( $lineCounts['1LA'] )
+                            echo $lineCounts['1LA'] ;
+                        else
+                            echo '0';
+                        ?>
+                    </span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['1LM'] ;?></span>
+                <span>
+                        <?php
+                        if ( $lineCounts['1LM'] )
+                            echo $lineCounts['1LM'] ;
+                        else
+                            echo '0';
+                        ?>
+                    </span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['1LB'] ;?></span>
+                <span>
+                    <?php
+                        if ( $lineCounts['1LB'] )
+                            echo $lineCounts['1LB'] ;
+                        else
+                            echo '0';
+                        ?>
+                        </span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['3A'] ;?></span>
+                    <span><?php
+                        if ( $lineCounts['3A'] )
+                            echo $lineCounts['3A'] ;
+                        else
+                            echo '0';
+                        ?></span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['3M'] ;?></span>
+                    <span><?php
+                        if ( $lineCounts['3M'] )
+                            echo $lineCounts['3M'] ;
+                        else
+                            echo '0';
+                    ?></span>
                 </td>
                 <td>
-                    <span><?php echo $lineCounts['3B'] ;?></span>
+                <span><?php
+                        if ( $lineCounts['3B'] )
+                            echo $lineCounts['3B'] ;
+                        else
+                            echo '0';
+                    ?></span>
                 </td>
             </tr>
         <?php endforeach; ?>

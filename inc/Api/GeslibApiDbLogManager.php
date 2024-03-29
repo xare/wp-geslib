@@ -13,7 +13,7 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 * @param  int $linesCount
 	 * @return mixed
 	 */
-	public function insertLogData( string $filename, string $status, int $linesCount ) :mixed {
+	public function insertLogData( string $filename, string $status, int $linesCount ): mixed {
 		global $wpdb;
 		$geslibLogValues = [
 			$filename,
@@ -28,7 +28,8 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 						$insertArray,
 						['%s', '%s', '%s', '%s', '%d']);
 		} catch (\Exception $e) {
-			return "This file has not been properly inserted into the database due to an error: ".$e->getMessage();
+			error_log("This file has not been properly inserted into the database due to an error: ".$e->getMessage());
+			return false;
 		}
 	}
 
@@ -280,11 +281,9 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 			$query = $wpdb->prepare( "SELECT id
 										FROM {$table_name}
 										WHERE status=%s",'queued' );
-			error_log($query);
-			error_log('id:'. $wpdb->get_var($query));
 			return $wpdb->get_var($query);
 		} catch ( \Exception $exception) {
-			wp_error('ERROR on getQueuedLogId: '. $exception->getMessage());
+			error_log('ERROR on getQueuedLogId: '. $exception->getMessage());
 			return false;
 		}
 
@@ -309,7 +308,6 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 
         // Execute the query and get the result.
         $result = $wpdb->get_var( $query );
-
         // Return true if a result is found, false otherwise.
         return !is_null( $result );
     }

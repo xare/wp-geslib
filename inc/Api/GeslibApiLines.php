@@ -132,7 +132,7 @@ class GeslibApiLines {
 		"6T", // Referencias de la librería (traducidas)
 		//"6TE", // Referencias del editor (traducidas)
 		"6IT", // Índice del libro (traducido)
-		//"LA", // Autores normalizados asociados a un artículo
+		"LA", // Autores normalizados asociados a un artículo
 		//"7", // Formatos de encuadernación
 		//"8", // Idiomas
 		//"9", // Palabras vacías
@@ -182,13 +182,12 @@ class GeslibApiLines {
 	 *
 	 * @return int
 	 */
-	public function storeToLines(): int{
+	public function storeToLines(int $log_id): int{
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager;
+		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		// 1. Read the log table
-		$log_id = $geslibApiDbLogManager->getGeslibLoggedId();
 		$filename = $geslibApiDbLogManager->getGeslibLoggedFilename( $log_id );
-		$geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
 		$fullPath = $this->mainFolderPath . $filename;
 
 		// 2. Read the file and store in lines table
@@ -198,29 +197,51 @@ class GeslibApiLines {
 		}
 
 		$lines = file( $fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
-		$batch_size = 2000; // Choose a reasonable batch size
+
+		$batch_size = 3000; // Choose a reasonable batch size
 		$batch = [];
-
+		$index = 0;
+		$i = 0;
 		foreach ($lines as $line) {
-			$line_array = explode('|', $line);
 
+			$line_array = explode('|', $line);
 			$line = $this->sanitizeLine( $line );
 			if( $this->isUnnecessaryLine( $line ) ) continue;
 			if( !$this->isInProductKey( $line ) ) continue;
 			if( $this->isInEditorials( $line ) ) continue;
-			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B'] ) ) ? 1 : 2;
+			if( $this->isInAutors( $line ) ) continue;
 
+			$index = ( in_array( $line_array[0],['6E', '6TE', 'AUTBIO', 'B','LA'] ) ) ? 1 : 2;
+			$entity = match ( $line_array[0] ) {
+				'GP4' => 'product',
+				'AUT' => 'autors',
+				'3' => 'editorials',
+				'5' => 'categories',
+				'B' => 'product',
+				'LA' => 'product',
+				default => 'none',
+			};
+			$action = match( $line_array[1] ) {
+				'A' => 'crear',
+				'M' => 'actualizar',
+				'B' => 'borrar',
+				default => 'adjuntar',
+			};
 			$item = [
 				'data' => $line,
 				'log_id' => $log_id,
 				'geslib_id' => $line_array[$index],
-				'type' => 'store_lines'  // type to identify the task in processQueue
+				'type' => 'store_lines',  // type to identify the task in processQueue
+				'entity' => $entity,
+				'action' => $action,
 			];
 			$batch[] = $item;
+
 			if (count($batch) >= $batch_size) {
 				$geslibApiDbQueueManager->insertLinesIntoQueue( $batch );
 				$batch = [];
 			}
+			$i++;
 		}
 		// Don't forget the last batch
 		if ( !empty( $batch ) ) {
@@ -258,24 +279,23 @@ class GeslibApiLines {
 	public function readLine( string $line, int $log_id ) :void {
 		$geslibApiDbQueueManager = new GeslibApiDbQueueManager();
 		$data = explode( '|', $line ) ;
+		//error_log($line);
 		array_pop($data);
 
 		if( in_array($data[0], self::$lineTypes ) ) {
-
 			$function_name = 'process' . $data[0];
-			error_log($function_name);
 			if ( method_exists( $this, $function_name ) ) {
 				$this->{$function_name}($data, $log_id);
 			}
-			$index = (in_array( $data[0] ,['6E', '6TE','BIC','B'])) ? 1 : 2;
+			$index = (in_array( $data[0] ,['6E', '6TE','BIC','B','LA'])) ? 1 : 2;
 			$geslibApiDbQueueManager->deleteItemFromQueue('store_lines', $log_id, (int) $data[$index]);
-
 		}
 
 	}
 
 	/**
 	 * processGP4
+	 * // LIBROS
 	 * //"type" | "action" | "geslib_id" |	"description" |	"author" | "pvp_ptas" |	"isbn" | "ean" |"num_paginas" |	"num_edicion" |	"origen_edicion" |"fecha_edicion" |	"fecha_reedicion" |	"año_primera_edicion" |"año_ultima_edicion" |"ubicacion" |"stock" |	"materia" |	"fecha_alta" |	"fecha_novedad" |"Idioma" |	"formato_encuadernacion" |"traductor" |"ilustrador" |"colección" |"numero_coleccion" |"subtitulo" |	"estado" |	"tmr" |	"pvp" |	"tipo_de_articulo" |"clasificacion" |"editorial" |	"pvp_sin_iva" |	"num_ilustraciones" |"peso" |"ancho" |"alto" |		"fecha_aparicion" |	"descripcion_externa" |	"palabras_asociadas" |			"ubicacion_alternativa" |"valor_iva" |"valoracion" |"calidad_literaria" |	"precio_referencia" | "cdu" |"en_blanco" |"libre_1" |"libre_2" | 			"premiado" |"pod" | "distribuidor_pod" | "codigo_old" | "talla" |			"color" |"idioma_original" |"titulo_original" |	"pack" |"importe_canon" |	"unidades_compra" |"descuento_maximo"
 	 * // GP4|A|17|BODAS DE SANGRE|GARRIGA MART�NEZ, JOAN|3660|978-84-946952-8-5|9788494695285|56|01||20180101||    |    ||1|06|20230214||003|02|BROGGI RULL, ORIOL||1||APUNTS I CAN�ONS DE JOAN GARRIGA SOBRE TEXTOS DE FEDERICO GARC�A LORCA (A PARTIR|0|0,00|22,00|L0|1|15|21,15|||210|148|||||4,00|||0,00|||||N|N||12530|||001||N||1|100,00|
 	 *
@@ -310,17 +330,22 @@ class GeslibApiLines {
 		// Procesa las líneas 6TE aquí
 	}
 
-	private function process1L( array $data, int $log_id ) {
-		//1L|B|codigo_editorial
-		//1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
-		//1L|A|1|VARIAS|VARIAS|ES|
+	/**
+	 * process1L
+	 * EDITORIAL
+	 * 1L|B|codigo_editorial
+	 * 1L|Tipo movimiento|Codigo_editorial|Nombre|nombre_externo|País|
+	 * 1L|A|1|VARIAS|VARIAS|ES|
+	 * @param  array $data
+	 * @param  int $log_id
+	 * @return void
+	 */
+	private function process1L( array $data, int $log_id ): void {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+		$keys = self::$editorialKeys;
 		if ($data[1] === 'B') {
 			$keys = self::$editorialDeleteKeys;
-		} elseif (in_array($data[1], ['A', 'M'])) {
-			$keys = self::$editorialKeys;
 		}
-		if (! isset( $keys )) return false;
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'editorial');
@@ -328,6 +353,9 @@ class GeslibApiLines {
 
 	/**
 	 * process3
+	 * Materias
+	 * Add categories
+	 * 3|A|01|Cartes|||
 	 *
 	 * @param  array $data
 	 * @param  int $log_id
@@ -335,33 +363,35 @@ class GeslibApiLines {
 	 */
 	private function process3( array $data, int $log_id ) {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
-		//Add categories
-		//3|A|01|Cartes|||
+		$keys = self::$categoriaKeys;
 		if ($data[1] === 'B') {
 			$keys = self::$categoriaDeleteKeys;
-		} elseif (in_array($data[1], ['A', 'M'])) {
-			$keys = self::$categoriaKeys;
 		}
-		if ( !isset($keys)) return false;
+		if ( $data[2] == '') return false;
+
 		$content_array = array_combine( $keys, $data );
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id , 'product_cat');
 	}
 
+	/**
+	 * process5
+	 * Add a category to to a product
+	 *  “5”|Código de categoría (varchar(12))|Código de producto|
+	 *  5|17|1|
+	 * @param  mixed $data
+	 * @param  mixed $log_id
+	 * @return void
+	 */
 	private function process5( $data, $log_id ) {
-		// Add a category to to a product
-		// “5”|Código de categoría (varchar(12))|Código de producto|
-		// 5|17|1|
 		$geslib_id = $data[2];
 		$content_array = [];
-		error_log('process 5');
 		if($data[1] !== 0 && $data[1] != '') {
-			error_log('process 5 inside');
 			$content_array['categories'][$data[1]] = $data[2];
-			error_log($content_array['categories'][$data[1]]);
 			$this->mergeContent($geslib_id, $content_array, 'product', $log_id);
 		}
 	}
+
 	/**
 	 * processAUT
 	 * Procesa las líneas AUT
@@ -375,6 +405,7 @@ class GeslibApiLines {
 	 */
 	private function processAUT( $data, $log_id ) {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
+		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 		if (in_array( $data[1], ['A','M'] )){
 			// Insert or Update
 			$content_array = array_combine( self::$authorKeys, $data );
@@ -383,8 +414,9 @@ class GeslibApiLines {
 			// Delete
 			$content_array = array_combine( self::$authorDeleteKeys, $data );
 		}
-		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'autor' );
+		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'autors' );
 	}
+
 	/**
 	 * processAUTBIO
 	 * //AUTBIO|3|Realiz� estudios de econom�a, ciencias pol�ticas y sociolog�a. Doctor en Ciencias Pol�ticas y profesor titular en la Facultad de Ciencias Pol�ticas y Sociolog�a de la Universidad Complutense de Madrid, hizo sus estudios de posgrado en la Universidad de Heidelberg (Alemania). En septiembre de 2010 fue ponente central en la conmemoraci�n del D�a Internacional de la Democracia en la Asamblea General de las Naciones Unidas en Nueva York. Dirige el Departamento de Gobierno, Pol�ticas P�blicas y Ciudadan�a Global del Instituto Complutense de Estudios Internacionales y pertenece al consejo cient�fico de ATTAC.|
@@ -396,7 +428,27 @@ class GeslibApiLines {
 	private function processAUTBIO( $data, int $log_id ) {
 		$content_array['biografia'] = $data[2];
 		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
-		$this->mergeContent( $data[1], $content_array, 'autor');
+		$this->mergeContent( $data[1], $content_array, 'autors');
+	}
+
+	/**
+	 * processLA
+	 * Add an author to to a product
+	 * “LA”|código del autor (varchar(12))|Código de producto| Tipo de autor (A Autor, I Ilustrador, IC Ilustrador contraportada, IP ilustrador Portada, T traductor) | Orden
+	 *	LA|9047|6345|A|1|
+	 *
+	 * @param  mixed $data
+	 * @param  int $log_id
+	 * @return void
+	 */
+	private function processLA( $data, int $log_id ) {
+		$geslib_author_id = $data[2];
+		$geslib_product_id = $data[1];
+		$content_array = [];
+		if($data[1] == 0 && $data[1] == '') { return false; }
+
+		$content_array['authors'][$geslib_author_id] = $geslib_product_id;
+		$this->mergeContent($geslib_product_id, $content_array, 'product', $log_id);
 	}
 
 	/**
@@ -427,13 +479,16 @@ class GeslibApiLines {
 	private function mergeContent(
 						int $geslib_id,
 						array $new_content_array,
-						string $type,
+						string $entity,
 						int $log_id = 0,
 						string $action = '' ) {
 		$geslibApiDbLinesManager = new GeslibApiDbLinesManager;
 		//1. Get the content given the $geslib_id
-		$original_content = $geslibApiDbLinesManager->fetchContent( $geslib_id, $type );
-		if ( !$original_content ) return error_log("error at Merge Content");
+		$original_content = $geslibApiDbLinesManager->fetchContent( $geslib_id, $entity );
+		if ( !$original_content ) {
+			error_log("error at Merge Content");
+			return false;
+		}
 
 		$original_content_array = json_decode( $original_content, true);
 		if( isset( $new_content_array['categories'] ) ) {
@@ -441,30 +496,36 @@ class GeslibApiLines {
 				isset( $original_content_array['categories'] )
 				&& count( $original_content_array['categories'] ) > 0
 				) {
-					error_log('categoryMerge');
 					$original_content_array['categories'] = array_merge( $original_content_array['categories'], $new_content_array['categories'] );
-					error_log(print_r($original_content_array['categories']));
 					array_push( $original_content_array['categories'], $new_content_array['categories'] );
-					error_log('After push');
-					error_log(print_r($original_content_array));
 			} elseif ( isset( $new_content_array['categories'] ) ) {
 				$original_content_array['categories'] = $new_content_array['categories'];
 			}
 		}
 
+		if( isset( $new_content_array['authors'] ) ) {
+			if (
+				isset( $original_content_array['authors'] )
+				&& count( $original_content_array['authors'] ) > 0
+				) {
+					$original_content_array['authors'] = array_merge( $original_content_array['authors'], $new_content_array['authors'] );
+					array_push( $original_content_array['authors'], $new_content_array['authors'] );
+				} elseif ( isset( $new_content_array['authors'] ) ) {
+					$original_content_array['authors'] = $new_content_array['authors'];
+				}
+		}
 		$fields = ['sinopsis','biografia'];
 		foreach( $fields as $field ) {
 			if ( !isset( $original_content_array[$field] )
 			&& isset( $new_content_array[$field] )) {
-
 				$original_content_array[$field] = $new_content_array[$field];
 			}
 		}
 
 		$content = json_encode($original_content_array);
-		if ( ! $content ) return FALSE;
+		if ( ! $content ) return false;
 
-		$geslibApiDbLinesManager->updateGeslibLines( $geslib_id, $type, $content );
+		$geslibApiDbLinesManager->updateGeslibLines( $geslib_id, $entity, $content );
 	}
 
 	/**
@@ -476,6 +537,7 @@ class GeslibApiLines {
 	public function isUnnecessaryLine( string $line ) :bool {
 		return strpos($line, '< Genérica >') !== false;
 	}
+
 	/**
 	 * Check if the editorial is in the taxonomy.
 	 *
@@ -490,6 +552,34 @@ class GeslibApiLines {
 		return $type === '1L' && $action === 'A' &&
 			!empty(get_terms( [
 				'taxonomy'   => 'editorials', // replace with your actual taxonomy name
+				'hide_empty' => false,
+				'meta_query' => [
+					[
+						'key'     => 'geslib_id',
+						'value'   => $geslib_id,
+						'compare' => '=',
+					],
+				],
+			]));
+	}
+
+	/**
+	 * Check if the author is in the taxonomy.
+	 * “AUT”|Acción|GeslibID|Nombre del autor
+	 * AUT|A|2806|HILAL, JAMIL|
+	 * "AUT"|B|GeslibId
+	 * @param string $line
+	 *   The input line, e.g., '1L|A|216|AGUILAR'.
+	 *
+	 * @return bool
+	 *   TRUE if the autor is in the taxonomy, FALSE otherwise.
+	 */
+	public function isInAutors( string $line ) :bool {
+		[$type, $action, $geslib_id] = explode('|', $line) + [null];
+		if($action === 'B') return false;
+		return $type === 'AUT' && $action === 'A' &&
+			!empty(get_terms( [
+				'taxonomy'   => 'autors', // replace with your actual taxonomy name
 				'hide_empty' => false,
 				'meta_query' => [
 					[

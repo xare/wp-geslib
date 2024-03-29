@@ -161,7 +161,7 @@ class GeslibApiReadFiles {
 	 */
 	public function countLines( string $filename ): mixed {
 		// Check if the file exists
-		if( file_exists( $filename ) )
+		if( file_exists( $filename ) && is_file( $filename ) )
 			return count( file( $filename ) );
 		else
 			return false; // Return false if file not found
@@ -196,7 +196,9 @@ class GeslibApiReadFiles {
 			'3M' => 0,
 			'3B' => 0,
 		];
-
+		if( !is_file( $filename )) {
+			return false;
+		}
 		$handle = fopen( $filename, "r" ); // Open the file for reading
 		// Read line by line
 		while ( $line = fgets( $handle ) ) {

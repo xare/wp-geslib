@@ -147,7 +147,7 @@ class GeslibStoreProductsCommand {
             ]);
 
             $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
-            $geslibApiDbQueueManager->processFromQueue( 'store_authors' );
+            $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
             $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
             $geslibApiDbQueueManager->processFromQueue( 'store_products' );
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info','Store to Products 1', 'products', [

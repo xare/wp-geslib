@@ -19,7 +19,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 	 */
 	public function countGeslibLines() :int {
 		global $wpdb;
-		return $wpdb->get_var( "SELECT COUNT(*) FROM ".$wpdb->prefix.self::GESLIB_LINES_TABLE);
+		return $wpdb->get_var( "SELECT COUNT(*) FROM ".$wpdb->prefix.self::GESLIB_QUEUES_TABLE." WHERE type='build_content'");
 	}
 
     /**
@@ -31,16 +31,10 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 		global $wpdb;
 
 		try {
-        	$wpdb->query( 'TRUNCATE TABLE '.$wpdb->prefix.self::GESLIB_LINES_TABLE );
-			$this->geslibApiDbLoggerManager->geslibLogger(0, 0, 'info', 'truncate', 'geslib_lines', [
-				'message' => 'Geslib_lines got truncated.',
-				'file' => basename(__FILE__),
-				'class' => __CLASS__,
-				'function' => __METHOD__,
-				'line' => __LINE__,
-			]);
+        	$wpdb->delete( $wpdb->prefix.self::GESLIB_QUEUES_TABLE, ['type' => 'store_lines'], ['%s'] );
 			return true;
 		} catch( \Exception $exception ) {
+            error_log('Failed to remove store_lines from queue');
 			$this->geslibApiDbLoggerManager->geslibLogger(0, 0, 'error', 'truncate', 'geslib_lines', [
 				'message' => "Unable to truncate geslib_lines table ".$exception->getMessage() ,
 				'file' => basename(__FILE__),
@@ -53,30 +47,25 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 	}
 
 
-    public function updateGeslibLines( int $geslib_id, string $type, mixed $content){
+    public function updateGeslibLines( int $geslib_id, string $entity, mixed $content){
 		global $wpdb;
 
 		try {
 			$wpdb->update(
-				$wpdb->prefix.self::GESLIB_LINES_TABLE,
-				['content' => $content],
+				$wpdb->prefix.self::GESLIB_QUEUES_TABLE,
+				['data' => $content],
 				[
 					'geslib_id' => $geslib_id,
-					'entity' => $type
+					'entity' => $entity,
+                    'type' => 'build_content'
 				],
 				'%s',
-				['%d','%s']
+				['%d','%s','%s']
 			);
-			$this->geslibApiDbLoggerManager->geslibLogger(0, 0, 'info', 'update', 'geslib_lines', [
-				'message' => "Update geslib_lines table for entity ".$type." and for geslib_id: ".$geslib_id. " and content " . $content,
-				'file' => basename(__FILE__),
-				'class' => __CLASS__,
-				'function' => __METHOD__,
-				'line' => __LINE__,
-			]);
 			return true;
 
 		} catch( \Exception $exception ) {
+            error_log('failed to update gesli_lines table'. $exception->getMessage());
 			$this->geslibApiDbLoggerManager->geslibLogger(0, 0, 'error', 'update', 'geslib_lines', [
 				'message' => "Unable to update geslib_lines table ".$exception->getMessage() ,
 				'file' => basename(__FILE__),
@@ -100,26 +89,20 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
 		global $wpdb;
 		try {
 			$wpdb->insert(
-				$wpdb->prefix.self::GESLIB_LINES_TABLE,
+				$wpdb->prefix.self::GESLIB_QUEUES_TABLE,
 				[
 					'log_id' => $log_id,
 					'geslib_id' => $content_array['geslib_id'],
+                    'type' => 'build_content',
 					'action' => $action,
 					'entity' => $entity,
-					'content' => json_encode($content_array),
-					'queued' => 1
+					'data' => json_encode($content_array),
 				],
 			);
-            $this->geslibApiDbLoggerManager->geslibLogger( $log_id, $content_array['geslib_id'], 'info', 'Set to queued', $entity, [
-                'message' => 'The ' . $entity .' data was successfully inserted to geslib lines.',
-                'file' => basename(__FILE__),
-                'class' => __CLASS__,
-                'function' => __METHOD__,
-                'line' => __LINE__,
-            ]);
             return true;
 		} catch (\Exception $e) {
-            $this->geslibApiDbLoggerManager->geslibLogger( $log_id, $content_array['geslib_id'], 'error', 'Set to queued', $entity, [
+            error_log("The $entity data was NOT successfully inserted to geslib lines ".$e->getMessage());
+            $this->geslibApiDbLoggerManager->geslibLogger( $log_id, $content_array['geslib_id'], 'error', 'Store to lines', $entity, [
                 'message' => "The $entity data was NOT successfully inserted to geslib lines ".$e->getMessage(),
                 'file' => basename(__FILE__),
                 'class' => __CLASS__,
@@ -134,22 +117,24 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      * fetchContent
      *
      * @param  int $geslib_id
-     * @param  string $type
+     * @param  string $entity
      * @return ?string
      */
-    public function fetchContent( int $geslib_id, string $type ): ?string {
+    public function fetchContent( int $geslib_id, string $entity ): ?string {
 		global $wpdb;
-		$table = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$table = $wpdb->prefix.self::GESLIB_QUEUES_TABLE;
 
 		$query = $wpdb->prepare(
 							"SELECT
-								content
-							FROM $wpdb->prefix.self::GESLIB_LINES_TABLE
+								data
+							FROM {$table}
 							WHERE
 								geslib_id = '%d'
 							AND
-								entity = '%s'",
-						$geslib_id, $type);
+								entity = '%s'
+                            AND
+                                type = '%s'",
+						$geslib_id, $entity, 'build_content');
 		return $wpdb->get_var( $query );
 	}
     /**
@@ -161,18 +146,20 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      */
     public function getAuthorsFromGeslibLines(): mixed {
         global $wpdb;
-
+        $queue_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
         // Prepare the SQL query. Ensure your column names are correct.
-        $query = "SELECT * FROM $wpdb->prefix . self::GESLIB_QUEUE_TABLE WHERE type='store_lines' AND entity = '%s'";
-        $prepared_query = $wpdb->prepare($query, 'autor');
+
+        $query = "SELECT * FROM {$queue_table} WHERE entity = '%s' AND TYPE='%s'";
+        $prepared_query = $wpdb->prepare($query, 'autors', 'store_autors');
 
         try {
             // Execute the query and get the results.
 			// ARRAY_A returns the result as an associative array.
-            $results = $wpdb->get_results($prepared_query);
+            $results = $wpdb->get_results($prepared_query, ARRAY_A);
             return $results;
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
+            error_log('Function getAuthorsFromGeslibLines: ' . $exception->getMessage());
 			$this->geslibApiDbLoggerManager->geslibLogger( 0, 0, 'error', 'get authors', 'author', [
                 'message' => 'Function getAuthorsFromGeslibLines: ' . $exception->getMessage() ,
                 'file' => basename(__FILE__),
@@ -193,18 +180,19 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      */
     public function getEditorialsFromGeslibLines(): mixed {
         global $wpdb;
-
+        $queue_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
         // Prepare the SQL query. Ensure your column names are correct.
-        $query = "SELECT * FROM $wpdb->prefix . self::GESLIB_QUEUE_TABLE WHERE type='store_lines' AND entity = '%s'";
-        $prepared_query = $wpdb->prepare($query, 'editorial');
+        $query = "SELECT * FROM {$queue_table} WHERE type='store_lines' AND entity = '%s' AND TYPE='%s'";
+        $prepared_query = $wpdb->prepare($query, 'editorial', 'store_editorial');
 
         try {
             // Execute the query and get the results.
 			// ARRAY_A returns the result as an associative array.
-            $results = $wpdb->get_results($prepared_query);
+            $results = $wpdb->get_results($prepared_query, ARRAY_A);
             return $results;
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
+            error_log('Function getEditorialsFromGeslibLines: ' . $exception->getMessage());
 			$this->geslibApiDbLoggerManager->geslibLogger( 0, 0, 'error', 'get editorials', 'editorial', [
                 'message' => 'Function getEditorialsFromGeslibLines: ' . $exception->getMessage() ,
                 'file' => basename(__FILE__),
@@ -225,15 +213,15 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      */
     public function getCategoriesFromGeslibLines(): mixed {
         global $wpdb;
-
+        $queue_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
         // Prepare the SQL query. Ensure your column names are correct.
-        $query = "SELECT * FROM $wpdb->prefix . self::GESLIB_QUEUE_TABLE WHERE type='store_lines' AND entity = '%s'";
-        $prepared_query = $wpdb->prepare($query, 'product_cat');
+        $query = "SELECT * FROM {$queue_table} WHERE  entity = '%s' AND type='%s'";
+        $prepared_query = $wpdb->prepare($query, 'product_cat', 'store_categories');
 
         try {
             // Execute the query and get the results.
 			// ARRAY_A returns the result as an associative array.
-            $results = $wpdb->get_results($prepared_query);
+            $results = $wpdb->get_results($prepared_query, ARRAY_A);
             return $results;
         } catch (\Exception $exception) {
             // Log the error to WordPress debug log.
@@ -244,6 +232,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
                 'function' => __METHOD__,
                 'line' => __LINE__,
             ]);
+            error_log('Function getCategoriesFromGeslibLines: ' . $exception->getMessage());
             return false;
         }
     }

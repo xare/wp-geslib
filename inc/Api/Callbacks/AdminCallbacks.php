@@ -20,6 +20,12 @@
         public function adminLinesTable() {
             return require_once("{$this->plugin_templates_path}/adminGeslibLines.php");
         }
+        public function adminQueuesTable() {
+            return require_once("{$this->plugin_templates_path}/adminGeslibQueues.php");
+        }
+        public function adminFilesTable() {
+            return require_once("{$this->plugin_templates_path}/adminGeslibFiles.php");
+        }
 
         public function textSanitize( $input ) {
             $output = get_option('geslib_settings');

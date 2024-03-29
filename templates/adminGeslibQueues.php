@@ -1,33 +1,31 @@
 <?php
-use Inc\Geslib\Api\GeslibLinesListTable;
+use Inc\Geslib\Api\GeslibQueuesListTable;
 ?>
 
 <div class="wrap">
-    <h1>Geslib LINES</h1>
+    <h1>Geslib QUEUES</h1>
     <?php settings_errors(); ?>
     <!-- FILTERS -->
     <?php
         global $wpdb;
-        $logTable = $wpdb->prefix . 'geslib_lines';
+        $table = $wpdb->prefix . 'geslib_queues';
 
         // Fetch distinct types
-        $log_id_sql = "SELECT DISTINCT log_id FROM {$logTable}";
+        $log_id_sql = "SELECT DISTINCT log_id FROM {$table}";
         $log_ids = $wpdb->get_col($log_id_sql);
 
-        $geslib_id_sql = "SELECT DISTINCT geslib_id FROM {$logTable}";
+        $geslib_id_sql = "SELECT DISTINCT geslib_id FROM {$table}";
         $geslib_ids = $wpdb->get_col($geslib_id_sql);
 
-        $entity_sql = "SELECT DISTINCT entity FROM {$logTable}";
+        $entity_sql = "SELECT DISTINCT entity FROM {$table}";
         $entities = $wpdb->get_col($entity_sql);
 
-        $action_sql = "SELECT DISTINCT action FROM {$logTable}";
-        $factions = $wpdb->get_col($action_sql);
+        $type_sql = "SELECT DISTINCT type FROM {$table}";
+        $types = $wpdb->get_col($type_sql);
 
-        $content_sql = "SELECT DISTINCT content FROM {$logTable}";
-        $content_count = $wpdb->get_col($content_sql);
+        $action_sql = "SELECT DISTINCT action FROM {$table}";
+        $actions = $wpdb->get_col($action_sql);
 
-        $queued_sql = "SELECT DISTINCT queued FROM {$logTable}";
-        $queued = $wpdb->get_col($queued_sql);
         ?>
     <form method="post">
         <select name="filter_log_id">
@@ -55,21 +53,19 @@ use Inc\Geslib\Api\GeslibLinesListTable;
                 </option>
             <?php endforeach; ?>
         </select>
-        <select name="filter_action">
-            <option value="">All Actions</option>
-            <?php foreach ($factions as $action): ?>
-                <option value="<?php echo esc_attr($action); ?>" <?php selected(isset($_POST['filter_action']) && $_POST['filter_action'] === $action); ?>>
-                    <?php echo esc_html($action); ?>
+        <select name="filter_type">
+            <option value="">All Types</option>
+            <?php foreach ($types as $type): ?>
+                <option value="<?php echo esc_attr($type); ?>" <?php selected(isset($_POST['filter_type']) && $_POST['filter_type'] === $type); ?>>
+                    <?php echo esc_html($type); ?>
                 </option>
             <?php endforeach; ?>
         </select>
-        <select name="filter_content">
-        </select>
-        <select name="filter_queued">
-            <option value="">All Queued</option>
-            <?php foreach ($queued as $queued): ?>
-                <option value="<?php echo esc_attr($queued); ?>" <?php selected(isset($_POST['filter_queued']) && $_POST['filter_queued'] === $queued); ?>>
-                    <?php echo esc_html($queued); ?>
+        <select name="filter_action">
+            <option value="">All Actions</option>
+            <?php foreach ($actions as $action): ?>
+                <option value="<?php echo esc_attr($action); ?>" <?php selected(isset($_POST['filter_action']) && $_POST['filter_action'] === $action); ?>>
+                    <?php echo esc_html($action); ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -77,11 +73,11 @@ use Inc\Geslib\Api\GeslibLinesListTable;
     </form>
     <!-- Page display -->
     <?php
-        $wp_list_table = new GeslibLinesListTable;
+        $wp_list_table = new GeslibQueuesListTable;
         $wp_list_table->prepare_items();
         // Render the table
-        echo "<form method='post' name='geslib_lines_search' action='".$_SERVER['PHP_SELF']."?page=geslib_lines'>";
-        $wp_list_table->search_box("Geslib Lines Search", "search_geslib_lines");
+        echo "<form method='post' name='geslib_queues_search' action='".$_SERVER['PHP_SELF']."?page=geslib_queues'>";
+        $wp_list_table->search_box("Geslib Queues Search", "search_geslib_queues");
         echo "</form>";
         $wp_list_table->display();
     ?>

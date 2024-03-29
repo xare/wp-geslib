@@ -24,6 +24,7 @@ class Cron extends BaseController {
         }
         add_action( 'geslib_cron_event', [ $this, 'geslib_cron_function' ] );
     }
+
     /**
      * geslib_cron_function
      *
@@ -39,8 +40,14 @@ class Cron extends BaseController {
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
         $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiStoreData = new GeslibApiStoreData;
+        $geslibApiReadFiles->readFolder();
+        // Check if there are queues of type 'store_products' and execute them
+        // Check if there are queues of type 'store_authors' and execute them
+        $queuetypes = ['store_products', 'build_content', 'store_autors', 'store_categories', 'store_editorials', 'store_lines', ];
+        foreach( $queuetypes as $queuetype ) {
+            $geslibApiDbQueueManager->processFromQueue( $queuetype );
+        }
         while( $geslibApiDbLogManager->checkLoggedStatus() ) {
-            $geslibApiReadFiles->readFolder();
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Current Log_id', 'geslib_log', [
                 'message' => 'Current log_id '.$log_id. ' to be queued.',
@@ -58,7 +65,7 @@ class Cron extends BaseController {
             ]);
             if ( !$geslibApiDbLogManager->isQueued() ){
                 $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-                $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Set to queued', 'geslib_log', [
+                $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Set log to queued', 'geslib_log', [
                     'message' => 'Log '.$log_id. ' has been queued.',
                     'file' => basename(__FILE__),
                     'class' => __CLASS__,
@@ -75,7 +82,7 @@ class Cron extends BaseController {
                     'line' => __LINE__,
                 ]);
             }
-            $geslibApiLines->storeToLines();
+            $geslibApiLines->storeToLines($log_id);
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Store to queue', 'geslib_queue', [
                 'message' => 'We are moving data from files to geslib_queued(store_lines).',
                 'file' => basename(__FILE__),
@@ -91,15 +98,16 @@ class Cron extends BaseController {
                 'function' => __METHOD__,
                 'line' => __LINE__,
             ]);
-            $geslibApiStoreData->storeAuthors();
-            $geslibApiDbLoggerManager->geslibLogger( $log_id, 0, 'info', 'Store to Terms', 'authors', [
+            $geslibApiDbQueueManager->processFromQueue('build_content');
+            //$geslibApiStoreData->storeAuthors();
+            $geslibApiDbLoggerManager->geslibLogger( $log_id, 0, 'info', 'Store to Terms', 'autors', [
                 'message' => 'Saving Authors.',
                 'file' => basename(__FILE__),
                 'class' => __CLASS__,
                 'function' => __METHOD__,
                 'line' => __LINE__,
             ]);
-            $geslibApiStoreData->storeEditorials();
+            //$geslibApiStoreData->storeEditorials();
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Store to Terms', 'editorials', [
                 'message' => 'Saving Editorials.',
                 'file' => basename(__FILE__),
@@ -107,7 +115,7 @@ class Cron extends BaseController {
                 'function' => __METHOD__,
                 'line' => __LINE__,
             ]);
-            $geslibApiDbProductsManager->storeProducts();
+            //$geslibApiDbProductsManager->storeProducts();
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Store to Products 1', 'geslib_queues', [
                 'message' => 'Saving Product data to geslib_queues.',
                 'file' => basename(__FILE__),
@@ -117,10 +125,10 @@ class Cron extends BaseController {
             ]);
 
             $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
-            $geslibApiDbQueueManager->processFromQueue( 'store_authors' );
+            $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
             $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
             $geslibApiDbQueueManager->processFromQueue( 'store_products' );
-            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info','Store to Products 1', 'products', [
+            $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info','Store to Products 2', 'products', [
                 'message' => 'Saving to woocommerce Products from geslib_queues.',
                 'file' => basename(__FILE__),
                 'class' => __CLASS__,

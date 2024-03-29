@@ -24,7 +24,7 @@ class GeslibProcessAllCommand {
                     [
                         'type'        => 'flag',
                         'name'        => 'process-all',
-                        'description' => 'Realise all teh process.',
+                        'description' => 'Realise all the process.',
                         'optional'    => true,
                     ],
                 ],
@@ -33,7 +33,7 @@ class GeslibProcessAllCommand {
     }
 
     /**
-    * Say hello
+    * Process all products, categories and authors.
     *
     * ## OPTIONS
     *
@@ -55,8 +55,8 @@ class GeslibProcessAllCommand {
         $geslibApiStoreData = new GeslibApiStoreData;
         $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiReadFiles = new GeslibApiReadFiles;
+        $geslibApiReadFiles->readFolder();
         while ( $geslibApiDbLogManager->checkLoggedStatus() ) {
-            $geslibApiReadFiles->readFolder();
             $log_id = $geslibApiDbLogManager->getGeslibLoggedId();
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Current Log_id', 'geslib_log', [
                 'message' => 'Current log_id '.$log_id. ' to be queued.',
@@ -74,7 +74,7 @@ class GeslibProcessAllCommand {
             ]);
             if ( !$geslibApiDbLogManager->isQueued() ){
                 $geslibApiDbLogManager->setLogStatus( $log_id, 'queued' );
-                $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Set to queued', 'geslib_log', [
+                $geslibApiDbLoggerManager->geslibLogger($log_id, 0,'info', 'Set log to queued', 'geslib_log', [
                     'message' => 'Log '.$log_id. ' has been queued.',
                     'file' => basename(__FILE__),
                     'class' => __CLASS__,
@@ -92,7 +92,7 @@ class GeslibProcessAllCommand {
                 ]);
             }
             WP_CLI::line( 'Enviamos las lineas a la cola de proceso. ');
-            $stored_lines = $geslibApiLines->storeToLines();
+            $stored_lines = $geslibApiLines->storeToLines($log_id);
             $geslibApiDbLoggerManager->geslibLogger($log_id, 0, 'info', 'Store to queue', 'geslib_queue', [
                 'message' => 'We are moving data from files to geslib_queued(store_lines).',
                 'file' => basename(__FILE__),
@@ -144,7 +144,7 @@ class GeslibProcessAllCommand {
                 'line' => __LINE__,
             ]);
             $geslibApiDbQueueManager->processFromQueue( 'store_editorials' );
-            $geslibApiDbQueueManager->processFromQueue( 'store_authors' );
+            $geslibApiDbQueueManager->processFromQueue( 'store_autors' );
             $geslibApiDbQueueManager->processFromQueue( 'store_categories' );
 
             WP_CLI::line( 'Se ha terminado de procesar la cola store_products. ');

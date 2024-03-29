@@ -34,7 +34,7 @@ class GeslibApiDbLoggerManager extends GeslibApiDbManager {
         $results  = $wpdb->get_results(
             $wpdb->prepare( "SELECT * FROM "
                             .$wpdb->prefix.self::GESLIB_LOGGER_TABLE
-                            ." ORDER BY date DESC LIMIT 20")
+                            ." ORDER BY date DESC LIMIT %d", 20)
             , ARRAY_A);
         if( count($results) == 0 ) return 'No loggers found.';
         $html_list = '<ul>';

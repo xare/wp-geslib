@@ -12,7 +12,6 @@ namespace Inc\Geslib\Base;
 
     // Replace these with your actual table names
     $geslib_log = $wpdb->prefix . 'geslib_log';
-    $geslib_lines = $wpdb->prefix . 'geslib_lines';
     $geslib_queues = $wpdb->prefix . 'geslib_queues';
     $geslib_logger = $wpdb->prefix . 'geslib_logger';
 
@@ -24,16 +23,15 @@ namespace Inc\Geslib\Base;
 
     // SQL queries to drop the tables
     $sql_log = "DROP TABLE IF EXISTS {$geslib_log};";
-    $sql_lines = "DROP TABLE IF EXISTS {$geslib_lines};";
     $sql_queues = "DROP TABLE IF EXISTS {$geslib_queues};";
     $sql_logger = "DROP TABLE IF EXISTS {$geslib_logger};";
 
     // Execute the queries
     //$wpdb->query($sql_drop_fk);
-    $wpdb->query($sql_lines);
+    /* $wpdb->query($sql_lines);
     $wpdb->query($sql_log);
     $wpdb->query($sql_queues);
-    $wpdb->query($sql_logger);
+    $wpdb->query($sql_logger); */
 
   }
  }

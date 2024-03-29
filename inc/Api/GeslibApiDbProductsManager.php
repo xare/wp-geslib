@@ -12,6 +12,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 	public function __construct(){
 		$this->geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
 	}
+
     /**
      * storeProducts
      *
@@ -20,7 +21,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
     public function storeProducts() {
 		global $wpdb;
         $geslibApiDbQueueManager = new GeslibApiDbQueueManager;
-		$geslibLinesTable = $wpdb->prefix.self::GESLIB_LINES_TABLE;
+		$geslibQueuesTable = $wpdb->prefix.self::GESLIB_QUEUES_TABLE;
 
 		// Create a queue for storing products.
         $actions = [
@@ -31,22 +32,24 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 
 		foreach ( $actions as $actionSet ) {
 			$query = $wpdb->prepare(
-				"SELECT * FROM {$geslibLinesTable} WHERE action=%s and entity=%s",
-				[ $actionSet, 'product']
+				"SELECT * FROM {$geslibQueuesTable}
+				WHERE action='%s'
+				AND entity='%s'
+				AND type='%s'",
+				[ $actionSet, 'product', 'build_content']
 			);
 			$lines = $wpdb->get_results( $query );
-			//if ( count( $lines ) == 0) return FALSE;
-			$batch_size = 2000; // Choose a reasonable batch size
+			$batch_size = 3000; // Choose a reasonable batch size
 			$batch = [];
 			foreach ( $lines as $line ) {
 				$item = [
 					'geslib_id' => $line->geslib_id,
 					'log_id' => $line->log_id,
-					'data' => $line->content,
+					'data' => $line->data,
 					'type' => 'store_products'  // type to identify the task in processQueue
 				];
-				if(isset($line->content->action)) {
-					$item['action'] = $line->content->action;
+				if(isset($line->data->action)) {
+					$item['action'] = $line->data->action;
 				}
 				$batch[] = $item;
 				if ( count( $batch ) >= $batch_size ) {
@@ -71,18 +74,19 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
     public function storeProduct( int $geslib_id, string $content ): int {
 		// Check if product already exists
 		$content = json_decode( $content, true );
-		$ean = $content['ean'];
-		$author = $content['author'];
-		$num_paginas = $content['num_paginas'];
-		$editorial_geslib_id = $content['editorial'];
-		$book_name = $content['description'];
-		$peso = $content['peso']/1000;
+		$ean = isset($content['ean']) ? $content['ean'] : '';
+		$author = isset($content['author']) ? $content['author'] : '';
+		$num_paginas = isset($content['num_paginas'])? $content['num_paginas'] : 0;
+		$editorial_geslib_id = isset($content['editorial']) ? $content['editorial']:'';
+		$book_name = isset($content['description']) ? $content['description']:'';;
+		$peso = isset($content['peso']) ? $content['peso']/1000 : 0;
 		$book_description = '';
-		$stock = $content['stock'];
+		$stock = isset($content['stock']) ? $content['stock'] : 0;
 
 		if ( isset( $content['sinopsis'] ) )
-			$book_description = $content['sinopsis'];
-			$book_price = floatval(str_replace(',', '.', $content['pvp']));
+			$book_description = isset( $content['sinopsis']) ? $content['sinopsis'] : '';
+
+			$book_price = ( isset( $content['pvp'] ) && $content['pvp'] != null ) ? floatval(str_replace(',', '.', $content['pvp'])) : 0.00;
 			$existing_product = null;
 			$args = [
 				'post_type'      => 'product',
@@ -126,15 +130,8 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 			// Save the product to the database and get its ID
 			try {
 				$product_id = $product->save();
-				$this->geslibApiDbLoggerManager
-					->geslibLogger(0, $geslib_id, 'info', 'store_product', 'woocommerce_product', [
-						'message' => "Book: $product->get_name() with product_id: $product_id has been queued.",
-						'file' => basename(__FILE__),
-						'class' => __CLASS__,
-						'function' => __METHOD__,
-						'line' => __LINE__,
-					]);
 			} catch(\Exception $exception) {
+				error_log('Failed to store product'. $exception->getMessage());
 				$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'store_product', 'woocommerce_product', [
                     'message' => "Product has NOT been queued: ".$exception->getMessage(),
                     'file' => basename(__FILE__),
@@ -144,37 +141,75 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
                 ]);
 			}
 
-			if(isset($ean)){
+			if( isset($ean) ){
 				update_post_meta($product_id, '_ean', $ean);
 				update_post_meta($product_id, '_num_paginas', $num_paginas);
 			}
-			if(isset($author))
+			if( isset($author) ) {
 				update_post_meta($product_id, '_author', $author);
-
+			}
 			update_post_meta($product_id, 'geslib_id', $geslib_id);
-		// Get the integer value from the content array
-		$editorial_id = intval($content['editorial']);
+			// Get the integer value from the content array
+			$editorial_id = (isset($content['editorial'])) ? intval($content['editorial']) : 0;
 
-		// Get terms
-		$args = array(
-			'taxonomy' => 'editorials', // the taxonomy for the term
-			'hide_empty' => false, // also retrieve terms which are not used yet
-			'meta_query' => [
-					['key'       => 'editorial_geslib_id', // your meta key
-					'value'     => $editorial_id, // your meta value
-					'compare'   => '='],
-				],
-			);
+			// Get terms
+			$args = [
+				'taxonomy' => 'editorials', // the taxonomy for the term
+				'hide_empty' => false, // also retrieve terms which are not used yet
+				'meta_query' => [
+						['key'       => 'editorial_geslib_id', // your meta key
+						'value'     => $editorial_id, // your meta value
+						'compare'   => '='],
+					],
+				];
+			$terms = get_terms($args);
+			// Check if any term found
+			if (!empty($terms) && !is_wp_error($terms)) {
+				// Terms found, get the first term
+				$editorial_term = $terms[0]->term_id;
+				// Assign the product to the editorial taxonomy term
+				try {
+					wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
+				} catch(\Exception $exception) {
+					error_log('Term was not properly assigned to product: '. $exception->getMessage());
+					$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'store_product', 'woocommerce_product', [
+						'message' => "Term was not properly assigned to product: ".$exception->getMessage(),
+						'file' => basename(__FILE__),
+						'class' => __CLASS__,
+						'function' => __METHOD__,
+						'line' => __LINE__,
+					]);
+				}
+			}
 
-		$terms = get_terms($args);
-		// Check if any term found
-		if (!empty($terms) && !is_wp_error($terms)) {
-			// Terms found, get the first term
-			$editorial_term = $terms[0]->term_id;
-			// Assign the product to the editorial taxonomy term
-			wp_set_object_terms($product_id, $editorial_term, 'editorials', true);
+		// APPEND AUTHORS
+		if (isset($content['authors']) && is_array($content['authors']) && count($content['authors']) > 0) {
+			$author_ids = [];
+			foreach ($content['authors'] as $key => $value) {
+				$author_id = intval($key);
+				$aut_args = [
+					'taxonomy' => 'autors', // the taxonomy for the term
+					'hide_empty' => false, // also retrieve terms which are not used yet
+					'meta_query' => [
+							['key'   => 'author_geslib_id', // your meta key
+							'value'  => $author_id, // your meta value
+							'compare'=> '='],
+						],
+					];
+				$authors = get_terms($aut_args);
+				if (!empty($authors) && !is_wp_error($authors)) {
+					// Terms found, get the first term
+					$author_term = $authors[0]->term_id;
+					// Assign the product to the editorial taxonomy term
+					try {
+						wp_set_object_terms( $product_id, $author_term, 'autors', true );
+					} catch( \Exception $exception ){
+						error_log( 'Failed to store author with id'. $author_term.' to product with id'. $product_id.': '.$exception->getMessage() );
+						continue;
+					}
+				}
+			}
 		}
-
 		// APPEND CATEGORIES
 		if( isset($content['categories']) && is_array($content['categories']) && count( $content['categories']) > 0 ) {
 			foreach ( $content['categories'] as $key => $value ) {
@@ -184,24 +219,43 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 					'taxonomy' => 'product_cat', // the taxonomy for the term
 					'hide_empty' => false, // also retrieve terms which are not used yet
 					'meta_query' => [
-							['key'   => 'category_geslib_id', // your meta key
+							'key'   => 'category_geslib_id', // your meta key
 							'value'  => $category_id, // your meta value
-							'compare'=> '='],
+							'compare'=> '=',
 						],
 					];
 
-					$categories = get_terms($cat_args);
-					// Check if any term found
-					if (!empty($categories) && !is_wp_error($categories)) {
-						// Terms found, get the first term
-						$category_term = $categories[0]->term_id;
-						// Assign the product to the editorial taxonomy term
-						try {
-							wp_set_object_terms( $product_id, $category_term, 'product_cat', true );
-						} catch( \Exception $exception ){
-							error_log( $exception->getMessage() );
+				$categories = get_terms($cat_args);
+				// Check if any term found
+				// Example for categories
+				if (!empty($categories) && !is_wp_error($categories)) {
+					$category_terms = wp_list_pluck($categories, 'term_id');
+
+					// Remove 'Uncategorized' category if other categories exist
+					$uncategorized_term_id = get_term_by('slug', 'uncategorized', 'product_cat')->term_id;
+					if (in_array($uncategorized_term_id, $category_terms)) {
+						if (count($category_terms) > 1) { // Check if there are other categories assigned
+							$key = array_search($uncategorized_term_id, $category_terms);
+							unset($category_terms[$key]);
 						}
 					}
+
+					foreach ($category_terms as $category_term) {
+						// Assign each category to the product, excluding 'Uncategorized' if applicable
+						try {
+							wp_set_object_terms($product_id, $category_term, 'product_cat', true);
+						} catch(\Exception $exception) {
+							error_log('Term was not properly assigned to product: '. $exception->getMessage());
+							$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'store_product', 'woocommerce_product', [
+								'message' => "Term was not properly assigned to product: ".$exception->getMessage(),
+								'file' => basename(__FILE__),
+								'class' => __CLASS__,
+								'function' => __METHOD__,
+								'line' => __LINE__,
+							]);
+						}
+					}
+				}
 			}
 		}
 		return $product_id;
@@ -215,6 +269,7 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
      * @return void
      */
     public function stockProduct( int $geslib_id, $data ): void {
+		$data = json_decode($data);
         $stock = $data->stock;
         if($stock == null || $stock == 0) return;
         // Ensure that WooCommerce is active
@@ -246,14 +301,18 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
                if ( $product ) {
                    // Update the stock
                    $product->set_stock_quantity( $stock );
-                   $product->save();
-				   $this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'info', 'stock_product', 'woocommerce_product', [
-															'message' => "Product stock has been updated:". $geslib_id,
-															'file' => basename(__FILE__),
-															'class' => __CLASS__,
-															'function' => __METHOD__,
-															'line' => __LINE__,
-                	]);
+                   try {
+						$product->save();
+				   } catch( \Exception $exception ) {
+						error_log('Product stock for geslib_id '.$geslib_id.' has NOT been updated:'. $exception->getMessage());
+						$this->geslibApiDbLoggerManager->geslibLogger(0, $geslib_id, 'error', 'stock_product', 'woocommerce_product', [
+							'message' => 'Product stock for geslib_id '.$geslib_id.' has NOT been updated:'. $exception->getMessage(),
+							'file' => basename(__FILE__),
+							'class' => __CLASS__,
+							'function' => __METHOD__,
+							'line' => __LINE__,
+						]);
+				   }
                }
            }
        }
@@ -289,8 +348,8 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 	 */
 	public function deleteAllProducts(): mixed {
 		// Query for all products
-		$batch_size = ($_POST['batch_size'] == null) ? -1 : $_POST['batch_size'];
-		$offset = ($_POST['offset'] == null) ? 0 : $_POST['offset'];
+		$batch_size = (!isset($_POST['batch_size']) || $_POST['batch_size'] == null) ? -1 : $_POST['batch_size'];
+		$offset = (!isset($_POST['offset']) || $_POST['offset'] == null) ? 0 : $_POST['offset'];
 
 		$args = [
 			'post_type'      => 'product',
@@ -336,19 +395,19 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
      * deleteProduct
      *
      * @param  int $geslib_id
-     * @return mixed
+     * @return bool
      */
-    public function deleteProduct(int $geslib_id): mixed {
-		$args = array(
+    public function deleteProduct( int $geslib_id ): bool {
+		$args = [
 			'post_type'      => 'product',
 			'posts_per_page' => -1,
-			'meta_query'     => array(
-				array(
+			'meta_query'     => [
+				[
 					'key'   => 'geslib_id',
 					'value' => $geslib_id,
-				),
-			),
-		);
+				],
+			],
+		];
 		$query = new WP_Query( $args );
 		if ( $query->have_posts() ) {
 			while ( $query->have_posts() ) {
@@ -362,15 +421,12 @@ class GeslibApiDbProductsManager extends GeslibApiDbManager {
 				} catch(\Exception $exception) {
 					error_log($exception->getMessage());
 				}
-				// Alternatively, you could use wp_delete_post,
-				// but the WooCommerce way ensures all related meta and terms are cleaned up
-				// wp_delete_post( $post_id, true );
 			}
-
 			wp_reset_postdata();
+			return true;
 		} else {
-			return 'No products found with the given geslib_id';
+			error_log('No products found with the given geslib_id '.$geslib_id);
+			return false;
 		}
 	}
-
 }

@@ -42,6 +42,10 @@ class GeslibLoggerListTable extends WP_List_Table {
             $geslib_id = sanitize_text_field( $_POST['filter_geslib_id'] );
             $where = $wpdb->prepare( ' WHERE geslib_id = %d', $geslib_id );
         }
+        if ( isset( $_POST['filter_filename'] ) && !empty( $_POST['filter_filename'] )) {
+            $filename = sanitize_text_field( $_POST['filter_filename'] );
+            $where = $wpdb->prepare( ' WHERE metadata LIKE %s', '%'.$filename.'%' );
+        }
 
         $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";
         $order = isset( $_GET['order'] ) ? trim( $_GET['order'] ): "ASC";
@@ -118,7 +122,7 @@ class GeslibLoggerListTable extends WP_List_Table {
             'id' => ['id', false],
             'date' => ['date', false],
             'log_id' => ['log_id', false],
-            'geslib_id' => ['eslib', false],
+            'geslib_id' => ['geslib_id', false],
             'type' => ['type', false],
             'action' => ['action', false],
             'entity' => ['entity', false],

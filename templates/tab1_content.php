@@ -82,6 +82,15 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
         <li>Tareas en la cola "store_products":<br />
             <strong data-target="total-products-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_products'); ?></strong>
         </li>
+        <li>Tareas en la cola "store_authors":<br />
+            <strong data-target="total-authors-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_autors'); ?></strong>
+        </li>
+        <li>Tareas en la cola "store_editorials":<br />
+            <strong data-target="total-editorials-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_editorials'); ?></strong>
+        </li>
+        <li>Tareas en la cola "store_categories":<br />
+            <strong data-target="total-categories-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_categories'); ?></strong>
+        </li>
         <li>Productos almacenados:<br />
             <strong data-target="total-products"><?php echo $geslibApiDbProductsManager->getTotalNumberOfProducts(); ?></strong>
         </li>
@@ -99,7 +108,7 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
                 ['3B. Crear productos','primary', 'process_products_queue', 'Procesar la cola de lines'],
                 ['4. Guardar Categories -> queue categories ', 'primary', 'store_categories',''],
                 ['5. Guardar Editorials', 'primary', 'store_editorials',''],
-                ['6. Guardar Authors', 'primary', 'store_authors',''],
+                ['6. Guardar Authors', 'primary', 'store_autors',''],
                 ['7. Proceso total', 'primary', 'process_all', ''],
                 ['8. Proceso Dilve', 'primary', 'process_dilve', ''],
                 ['9. Reinicializar Registro', 'primary', 'set_to_logged', ''],

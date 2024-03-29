@@ -8,17 +8,27 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
     /**
      * insertLinesIntoQueue
 	 * Inserts each line from INTER*** to the store_lines queue
+	 * Called by GeslibApiLines
      *
      * @param  array $batch
      * @return mixed
      */
     public function insertLinesIntoQueue( array $batch ) {
 		global $wpdb;
+		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
+		error_log("Inside insertLinesIntoQueue" . count($batch ) );
 		foreach ($batch as $item) {
 			try {
 				$wpdb->insert($wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item);
 			} catch( \Exception $exception ) {
 				error_log( $exception->getMessage() );
+				$geslibApiDbLoggerManager->geslibLogger(0, 0, 'error', 'insert', 'geslib_lines', [
+					'message' => 'insertLinesIntoQueue: '.var_export($item, true),
+                	'file' => basename(__FILE__),
+                	'class' => __CLASS__,
+                	'function' => __METHOD__,
+                	'line' => __LINE__,
+				]);
             }
 		}
 	}
@@ -30,81 +40,119 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
      */
     public function insertProductsIntoQueue( array $batch ) {
 		global $wpdb;
-
+		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		foreach ( $batch as $item ) {
 			try{
-				$wpdb->insert( $wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item );
+				$wpdb->insert( $queues_table, $item );
 				try {
 					$wpdb->delete(
-						$wpdb->prefix . self::GESLIB_LINES_TABLE,
+						$queues_table,
 						[
 							'geslib_id' => $item['geslib_id'],
 							'log_id' => $item['log_id'],
-							'entity' => 'product'
-						],['%d','%d','%s']
+							'entity' => 'product',
+							'type' => 'build_content'
+						],['%d','%d','%s','%s']
 					);
-				} catch( \Exception $exception ) { echo $exception->getMessage(); }
-			} catch( \Exception $exception ) { echo $exception->getMessage(); }
+				} catch( \Exception $exception ) {
+					error_log($exception->getMessage());
+				}
+			} catch( \Exception $exception ) {
+				error_log($exception->getMessage());
+			}
 		}
 	}
 
-	public function insertAuthorsIntoQueue( array $batch ) {
+	/**
+	 * insertAuthorsIntoQueue
+	 *
+	 * @param  array $batch
+	 * @return bool
+	 */
+	public function insertAuthorsIntoQueue( array $batch ): bool {
 		global $wpdb;
-
+		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		foreach ( $batch as $item ) {
 			try{
-				$wpdb->insert( $wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item );
+				$wpdb->insert( $queues_table, $item );
 				try {
 					$wpdb->delete(
-						$wpdb->prefix . self::GESLIB_LINES_TABLE,
+						$queues_table,
 						[
 							'geslib_id' => $item['geslib_id'],
 							'log_id' => $item['log_id'],
-							'entity' => 'author'
-						],['%d','%d','%s']
+							'entity' => 'autors',
+							'type' => 'store_autors'
+						],['%d','%d','%s','%s']
 					);
-				} catch( \Exception $exception ) { echo $exception->getMessage(); }
-			} catch( \Exception $exception ) { echo $exception->getMessage(); }
+				} catch( \Exception $exception ) {
+					error_log($exception->getMessage());
+					continue;
+				}
+			} catch( \Exception $exception ) {
+				error_log($exception->getMessage());
+				continue;
+			}
 		}
 	}
 
 	public function insertEditorialsIntoQueue( array $batch ) {
 		global $wpdb;
-
+		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		foreach ( $batch as $item ) {
 			try{
-				$wpdb->insert( $wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item );
+				$wpdb->insert( $queues_table, $item );
 				try {
 					$wpdb->delete(
-						$wpdb->prefix . self::GESLIB_LINES_TABLE,
+						$queues_table,
 						[
 							'geslib_id' => $item['geslib_id'],
 							'log_id' => $item['log_id'],
-							'entity' => 'author'
-						],['%d','%d','%s']
+							'entity' => 'editorial',
+							'type' => 'store_editorials'
+						],['%d','%d','%s','%s']
 					);
-				} catch( \Exception $exception ) { echo $exception->getMessage(); }
-			} catch( \Exception $exception ) { echo $exception->getMessage(); }
+				} catch( \Exception $exception ) {
+					error_log($exception->getMessage());
+					continue;
+				}
+			} catch( \Exception $exception ) {
+				error_log($exception->getMessage());
+				continue;
+			}
 		}
 	}
 
+	/**
+	 * insertCategoriesIntoQueue
+	 *
+	 * @param  mixed $batch
+	 * @return void
+	 */
 	public function insertCategoriesIntoQueue( array $batch ) {
 		global $wpdb;
-
+		$queues_table = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 		foreach ( $batch as $item ) {
 			try{
-				$wpdb->insert( $wpdb->prefix . self::GESLIB_QUEUES_TABLE, $item );
+				$wpdb->insert( $queues_table, $item );
 				try {
 					$wpdb->delete(
-						$wpdb->prefix . self::GESLIB_LINES_TABLE,
+						$queues_table,
 						[
 							'geslib_id' => $item['geslib_id'],
 							'log_id' => $item['log_id'],
-							'entity' => 'author'
-						],['%d','%d','%s']
+							'entity' => 'product_cat',
+							'type' => 'store_categories'
+						],['%d','%d','%s','%s']
 					);
-				} catch( \Exception $exception ) { echo $exception->getMessage(); }
-			} catch( \Exception $exception ) { echo $exception->getMessage(); }
+				} catch( \Exception $exception ) {
+					error_log('Unable to delete from queue store_categories for ' . var_export($item,true) . ' - ' . $exception->getMessage());
+					continue;
+				}
+			} catch( \Exception $exception ) {
+				error_log('Unable to insert into queue for '.var_export($item,true) . ' - ' . $exception->getMessage());
+				continue;
+			}
 		}
 	}
 
@@ -114,9 +162,9 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	 * @param  string $type
 	 * @param  int $log_id
 	 * @param  int $geslib_id
-	 * @return void
+	 * @return bool
 	 */
-	public function deleteItemFromQueue( string $type, int $log_id, int $geslib_id ) {
+	public function deleteItemFromQueue( string $type, int $log_id, int $geslib_id ): bool {
 		global $wpdb;
 		$geslib_id = ( $geslib_id == null )? 0 : $geslib_id;
 		try {
@@ -133,9 +181,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 					'%d'  // placeholder for 'log_id', assuming it's an integer
 				]
 			);
-			error_log("Deleted task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id}");
+			return true;
 		} catch(\Exception $exception) {
 			error_log("Failed to delete task: Type {$type}, Geslib ID {$geslib_id}, Log ID {$log_id} :".$exception->getMessage());
+			return false;
 		}
 	}
 
@@ -158,11 +207,10 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 					'%s', // placeholder for 'type'
 				]
 			);
-
-            return TRUE;
+            return true;
         } catch (\Exception $exception) {
             error_log("Failed to delete queue: {$type}:".$exception->getMessage());
-            return FALSE;
+            return false;
         }
     }
 
@@ -170,46 +218,67 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	 * processFromQueue
 	 *
 	 * @param  mixed $type
-	 * @return void
+	 * @return bool
 	 */
-	public function processFromQueue( string $type ) {
+	public function processFromQueue( string $type ): bool {
 		global $wpdb;
         $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
-		if( $type == 'store_lines' ) {
+
+		// Define a mapping of types to their respective processing functions
+		// Type
+		/*
+			'build_content' => 'processBatchBuildContent',
+			'store_lines' => 'processBatchStoreLines',
+			'store_products' => 'processBatchStoreProducts',
+			'store_autors' => 'processBatchStoreAutors',
+			'store_editorials' => 'processBatchStoreEditorials',
+			'store_categories' => 'processBatchStoreCategories',
+		*/
+		$methodName = 'processBatch' . str_replace('_', '', ucwords($type, '_'));
+
+		// Check if the provided type is valid
+		if (method_exists($this, $methodName)) {
 			do {
-				$this->processBatchStoreLines( 10 );
-				// Get the count of remaining items in the queue
-				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
-				//echo 'queue count '.$queue_count.'/n' ;
-			} while ( $queue_count > 0 );
+				// Call the corresponding processing function based on the type
+				$this->$methodName(3000);
+
+				// Get the count of remaining items in the queue safely
+				$preparedQuery = $wpdb->prepare("SELECT COUNT(*) FROM `$table_name` WHERE `type` = %s", $type);
+				$queue_count = $wpdb->get_var($preparedQuery);
+
+			} while ($queue_count > 0);
+			return true;
+		} else {
+			// Optionally handle the case where the type is not recognized
+			error_log("Unrecognized queue type: $type");
+			return false;
 		}
-		if( $type == 'store_products' ) {
-			// Select tasks of type 'store_products' that are pending
-			do{
-				$this->processBatchStoreProducts( 10 );
-				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
-			} while( $queue_count > 0);
-		}
-		if( $type == 'store_authors' ) {
-			// Select tasks of type 'store_products' that are pending
-			do{
-				$this->processBatchStoreAuthors( 10 );
-				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
-			} while( $queue_count > 0);
-		}
-		if( $type == 'store_editorials' ) {
-			// Select tasks of type 'store_products' that are pending
-			do{
-				$this->processBatchStoreEditorials( 10 );
-				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
-			} while( $queue_count > 0);
-		}
-		if( $type == 'store_categories' ) {
-			// Select tasks of type 'store_products' that are pending
-			do{
-				$this->processBatchStoreCategories( 10 );
-				$queue_count = $wpdb->get_var( "SELECT COUNT(*) FROM `$table_name` WHERE `type` = '$type'" );
-			} while( $queue_count > 0);
+	}
+
+	public function processBatchBuildContent( int $batchSize = 100 ) {
+		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
+		$queue = $this->getBatchFromQueue( $batchSize, 'build_content' );
+
+		foreach ( $queue as $task ) {
+			$type = match( $task->entity ) {
+				'product' => 'store_products',
+				'autors' => 'store_autors',
+				'editorial' => 'store_editorials',
+				'product_cat' => 'store_categories',
+			};
+			try {
+				$wpdb->update( $table_name,
+			 				['type' => $type],
+							[
+								'geslib_id' => $task->geslib_id,
+								'entity' => $task->entity],
+							'%s',
+							['%d','%s'] );
+			} catch (\Exception $exception) {
+				error_log("Failed to update task: Type {$type}, Geslib ID {$task->geslib_id}, Entity {$task->entity} :".$exception->getMessage());
+				continue;
+			}
 		}
 	}
 	/**
@@ -218,12 +287,12 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	 * @param  int $batchSize
 	 * @return void
 	 */
-	public function processBatchStoreLines( int $batchSize = 10 ) {
-        $queue = $this->getBatchFromQueue( $batchSize, 'store_lines' );
+	public function processBatchStoreLines( int $batchSize = 100 ) {
+        $queue = $this->getBatchFromQueue( (int) $batchSize, 'store_lines' );
         // If there are no tasks, exit the function.
         $geslibApiLines = new GeslibApiLines();
         foreach ($queue as $task) {
-            $geslibApiLines->readLine( $task->data, $task->log_id );
+            $geslibApiLines->readLine( $task->data, (int) $task->log_id );
         }
     }
 
@@ -233,55 +302,60 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 	 * @param  int $batchSize
 	 * @return void
 	 */
-	public function processBatchStoreProducts( int $batchSize = 10 ) {
+	public function processBatchStoreProducts( int $batchSize = 100 ) {
 		$geslibApiDbProductsManager = new GeslibApiDbProductsManager();
-		$queue = $this->getBatchFromQueue( $batchSize, 'store_products' );
+		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager();
+		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_products' );
 		foreach ( $queue as $task ) {
 			if( $task->action == 'stock') {
-				$geslibApiDbProductsManager->stockProduct($task->geslib_id, $task->data);
+				$geslibApiDbProductsManager->stockProduct( (int) $task->geslib_id, $task->data);
 			} else if( $task->action == 'B') {
-				$geslibApiDbProductsManager->deleteProduct( $task->geslib_id );
+				$geslibApiDbProductsManager->deleteProduct( (int) $task->geslib_id );
 			} else {
-				$geslibApiDbProductsManager->storeProduct( $task->geslib_id, $task->data );
+				$geslibApiDbProductsManager->storeProduct( (int) $task->geslib_id, $task->data );
 			}
-			$this->deleteItemFromQueue( $task->type, $task->log_id, (int) $task->geslib_id );
+			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
 		}
 	}
 
-	public function processBatchStoreAuthors( int $batchSize = 10 ) {
+	public function processBatchStoreAutors( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
-		$queue = $this->getBatchFromQueue( $batchSize, 'store_authors' );
+		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
+		$geslibApiDbLoggerManager = new GeslibApiDbLoggerManager();
+		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_autors' );
 		foreach ( $queue as $task ) {
 			if( $task->action == 'B') {
-				$geslibApiDbManager->deleteAuthor( $task->geslib_id );
+				$geslibApiDbManager->deleteTerm( (int) $task->geslib_id, 'autors' );
 			} else {
-				$geslibApiDbManager->storeAuthor( $task->geslib_id, $task->data );
+				$geslibApiDbTaxonomyManager->storeAuthor( (int) $task->geslib_id, $task->data );
 			}
-			$this->deleteItemFromQueue( $task->type, $task->log_id, (int) $task->geslib_id );
+			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
 		}
 	}
-	public function processBatchStoreEditorials( int $batchSize = 10 ) {
+	public function processBatchStoreEditorials( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
-		$queue = $this->getBatchFromQueue( $batchSize, 'store_editorials' );
+		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
+		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_editorials' );
 		foreach ( $queue as $task ) {
 			if( $task->action == 'B') {
-				$geslibApiDbManager->deleteProduct( $task->geslib_id );
+				$geslibApiDbManager->deleteTerm( (int) $task->geslib_id, 'editorials' );
 			} else {
-				$geslibApiDbManager->storeEditorial( $task->geslib_id, $task->data );
+				$geslibApiDbTaxonomyManager->storeEditorial( (int) $task->geslib_id, $task->data );
 			}
-			$this->deleteItemFromQueue( $task->type, $task->log_id, (int) $task->geslib_id );
+			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
 		}
 	}
-	public function processBatchStoreCategories( int $batchSize = 10 ) {
+	public function processBatchStoreCategories( int $batchSize = 100 ) {
 		$geslibApiDbManager = new GeslibApiDbManager();
-		$queue = $this->getBatchFromQueue( $batchSize, 'store_categories' );
+		$geslibApiDbTaxonomyManager = new GeslibApiDbTaxonomyManager();
+		$queue = $this->getBatchFromQueue( (int) $batchSize, 'store_categories' );
 		foreach ( $queue as $task ) {
 			if ( $task->action == 'B') {
-				$geslibApiDbManager->deleteCategory( $task->geslib_id );
+				$geslibApiDbManager->deleteTerm( (int) $task->geslib_id, "product_cat" );
 			} else {
-				$geslibApiDbManager->storeCategory( $task->geslib_id, $task->data );
+				$geslibApiDbTaxonomyManager->storeCategory( (int) $task->geslib_id, $task->data );
 			}
-			$this->deleteItemFromQueue( $task->type, $task->log_id, (int) $task->geslib_id );
+			$this->deleteItemFromQueue( (string) $task->type, (int) $task->log_id, (int) $task->geslib_id );
 		}
 	}
 
@@ -326,5 +400,4 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		$sql = $wpdb->prepare( "SELECT COUNT(*) FROM {$queueTable} WHERE type='%s'", $type);
 		return $wpdb->get_var($sql);
 	}
-
 }

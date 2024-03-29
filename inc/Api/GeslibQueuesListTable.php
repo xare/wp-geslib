@@ -4,43 +4,37 @@ namespace Inc\Geslib\Api;
 use WP_List_Table;
 use Inc\Geslib\Api\GeslibApiDbManager;
 
-class GeslibLinesListTable extends WP_List_Table {
+class GeslibQueuesListTable extends WP_List_Table {
 
     private $geslibApiDbLinesManager;
 
     public function __construct() {
         parent::__construct([
-            'singular' => 'geslib_lines',  // Singular label of the table
-            'plural'   => 'geslib_lines', // Plural label of the table
+            'singular' => 'geslib_queues',  // Singular label of the table
+            'plural'   => 'geslib_queues', // Plural label of the table
             'ajax'     => true             // Does this table support ajax?
         ]);
 
     }
     public function prepare_items() {
         global $wpdb;
-        $cegalApiDbLinesManager = new GeslibApiDbLinesManager;
-        $linesTable = $wpdb->prefix . $cegalApiDbLinesManager::GESLIB_LINES_TABLE;
+        $cegalApiDbLinesManager = new GeslibApiDbQueueManager;
+        $linesTable = $wpdb->prefix . $cegalApiDbLinesManager::GESLIB_QUEUES_TABLE;
         // define data set for WP_List_Table => data
         $where = ''; // Initialize where clause
-        if ( isset( $_POST['filter_log_id'] ) && !empty( $_POST['filter_log_id'] )) {
-            $log_id = (int) $_POST['filter_log_id'];
-            $where = $wpdb->prepare(' WHERE log_id = %d', $log_id );
-        }
-        if ( isset( $_POST['filter_geslib_id'] ) && !empty( $_POST['filter_geslib_id'] )) {
-            $geslib_id = (int)  $_POST['filter_geslib_id'] ;
-            $where = $wpdb->prepare(' WHERE geslib_id = %d', $geslib_id);
-        }
-        if ( isset( $_POST['filter_entity'] ) && !empty( $_POST['filter_entity'] )) {
-            $entity = sanitize_text_field($_POST['filter_entity']);
-            $where = $wpdb->prepare(' WHERE entity = %s', $entity);
-        }
-        if ( isset( $_POST['filter_action']) && !empty( $_POST['filter_action'] )) {
-            $action = sanitize_text_field($_POST['filter_action']);
-            $where = $wpdb->prepare(' WHERE action = %s', $action);
-        }
-        if ( isset( $_POST['filter_queued'] ) && !empty( $_POST['filter_queued'] )) {
-            $queued = sanitize_text_field( $_POST['filter_queued'] );
-            $where = $wpdb->prepare( ' WHERE queued = %s', $queued );
+        $filters = [
+            'log_id',
+            'geslib_id',
+            'type',
+            'entity',
+            'action',
+        ];
+        foreach($filters as $filtername){
+            $postdata = isset($_POST[ 'filter_'.$filtername ]) ? $_POST[ 'filter_'.$filtername ] : '';
+            if ( !empty( $postdata )) {
+                $value = (is_integer($postdata)) ? (int) $postdata : sanitize_text_field($postdata);
+                $where = $wpdb->prepare(' WHERE '.$filtername.' = %s', $value);
+            }
         }
 
         $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";
@@ -49,11 +43,12 @@ class GeslibLinesListTable extends WP_List_Table {
         $search_term = isset($_POST['s'])? trim($_POST['s']) : "";
         if ($search_term) {
             $search_term = sanitize_text_field($search_term);
-            $where = " WHERE log_id = %{$search_term}%
+            $where = " WHERE log_id = {$search_term}
                         OR geslib_id = {$search_term}
+                        OR type LIKE '%{$search_term}%'
                         OR entity LIKE '%{$search_term}%'
                         OR action LIKE '%{$search_term}%'
-                        OR content LIKE '%{$search_term}%'
+                        OR data LIKE '%{$search_term}%'
                         OR queued LIKE '%{$search_term}%'";
         }
         // First, get the total count of items
@@ -83,13 +78,13 @@ class GeslibLinesListTable extends WP_List_Table {
 
     public function wp_list_table_data($where = '', $per_page = 20,  $orderby = '', $order = '', $search_term = '') {
         global $wpdb;
-        $cegalApiDbManager = new GeslibApiDbManager;
+        $geslibApiDbManager = new GeslibApiDbManager;
         // Determine what page the user is currently looking at
         $current_page = $this->get_pagenum();
         $offset = ($current_page - 1) * $per_page;
 
-        $table = $wpdb->prefix . $cegalApiDbManager::GESLIB_LINES_TABLE;
-        $sql_data = $wpdb->prepare("SELECT * FROM {$table} {$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET %d", $offset);
+        $table = $wpdb->prefix . $geslibApiDbManager::GESLIB_QUEUES_TABLE;
+        $sql_data = $wpdb->prepare("SELECT * FROM {$table} {$where} ORDER BY {$orderby} {$order} LIMIT {$per_page} OFFSET {$offset}");
         return  $wpdb->get_results($sql_data, ARRAY_A);
     }
 
@@ -99,9 +94,9 @@ class GeslibLinesListTable extends WP_List_Table {
             'geslib_id' => 'Geslib ID',
             'log_id' => 'Log ID',
             'entity' => 'Entity',
+            'type' => 'Type',
             'action' => 'Action',
-            'content' => 'Content',
-            'queued' => 'Queued',
+            'data' => 'data',
         ];
         return $columns;
     }
@@ -115,9 +110,10 @@ class GeslibLinesListTable extends WP_List_Table {
             'id' => ['id', false],
             'log_id' => ['log_id', false],
             'geslib_id' => ['geslib_id', false],
+            'type' => ['type', false],
             'entity' => ['entity', false],
-            'content' => ['content', false],
-            'queued' => ['queued', false],
+            'action' => ['action', false],
+            'data' => ['data', false],
         ];
     }
 
@@ -129,7 +125,7 @@ class GeslibLinesListTable extends WP_List_Table {
      * @return Some_Return_Value
      */
     public function column_default( $item, $column_name ) {
-        $cegalApiDbLinesManager = new GeslibApiDbLinesManager;
+        $geslibApiDbLinesManager = new GeslibApiDbLinesManager;
         /* if ( $item['book_id'] == null || !$item['book_id'] ) {
             $book_id = 0;
         } else {
@@ -147,9 +143,9 @@ class GeslibLinesListTable extends WP_List_Table {
             'log_id' => $item[$column_name],
             'geslib_id' => $item[$column_name],
             'entity' => $item[$column_name],
+            'type' => $item[$column_name],
             'action' => $item[$column_name],
-            'content' => $item[$column_name],
-            'queued' => $item[$column_name],
+            'data' => $item[$column_name],
             default => 'no value',
         };
     }

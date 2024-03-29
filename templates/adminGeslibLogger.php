@@ -24,6 +24,9 @@ use Inc\Geslib\Api\GeslibLoggerListTable;
 
       $geslib_id_sql = "SELECT DISTINCT geslib_id FROM {$loggerTable}";
       $geslib_ids = $wpdb->get_col($geslib_id_sql);
+
+      $metadata_sql = "SELECT metadata FROM {$loggerTable}";
+      $metadatas = $wpdb->get_col($metadata_sql);
       ?>
 
 <form method="post">

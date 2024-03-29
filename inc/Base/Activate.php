@@ -25,16 +25,6 @@ namespace Inc\Geslib\Base;
     /* status string read|queued|processed */
     /* lines int */
 
-    /* CREATE A DATABASE TABLE CALLED geslib_lines */
-    /* id int autoincrement */
-    /* log_id string one log id may have many geslib_lines.id s */
-    /* geslib_id */
-    /* entity string */
-    /* action string */
-    /* content string json*/
-    /* status string read|queued|processed */
-    /* lines int */
-
     /* CREATE A DATABASE TABLE CALLED geslib_queues */
     /* id int autoincrement */
     /* log_id string one log id may have many geslib_lines.id s */
@@ -55,7 +45,6 @@ namespace Inc\Geslib\Base;
 
     $charset_collate = $wpdb->get_charset_collate();
     $log_table_name = $wpdb->prefix . 'geslib_log';
-    $lines_table_name = $wpdb->prefix . 'geslib_lines';
     $queue_table_name = $wpdb->prefix. 'geslib_queues';
     $logger_table_name = $wpdb->prefix. 'geslib_logger';
 
@@ -69,19 +58,7 @@ namespace Inc\Geslib\Base;
       PRIMARY KEY (id)
     ) $charset_collate;";
 
-    $lines_sql = "CREATE TABLE $lines_table_name (
-      id mediumint(9) unsigned NOT NULL AUTO_INCREMENT,
-      log_id mediumint(9) unsigned NOT NULL,
-      geslib_id text NOT NULL,
-      entity text NOT NULL,
-      action text NOT NULL,
-      content text NOT NULL,
-      queued boolean,
-      PRIMARY KEY (id),
-      FOREIGN KEY (log_id) REFERENCES $log_table_name(id)
-          ) $charset_collate;";
-
-      $queue_sql = "CREATE TABLE $queue_table_name (
+    $queue_sql = "CREATE TABLE $queue_table_name (
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         log_id mediumint(9) unsigned,
         geslib_id text,
@@ -90,7 +67,7 @@ namespace Inc\Geslib\Base;
         PRIMARY KEY (id)
       ) $charset_collate;";
 
-      $logger_sql = "CREATE TABLE $logger_table_name(
+    $logger_sql = "CREATE TABLE $logger_table_name(
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         log_id mediumint(9) unsigned,
         geslib_id text,
@@ -103,7 +80,6 @@ namespace Inc\Geslib\Base;
 
       require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
       dbDelta( $log_sql );
-      dbDelta( $lines_sql );
       dbDelta( $queue_sql );
       dbDelta( $logger_sql );
   }

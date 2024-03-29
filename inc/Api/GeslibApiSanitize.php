@@ -49,6 +49,7 @@ class GeslibApiSanitize {
     *     $string
     */
     public function utf8_encode($string) {
+        $string = ltrim($string, ', ');
         if ($string) {
            return Encoding::fixUTF8( $string );
         } else {

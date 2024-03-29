@@ -6,6 +6,7 @@ use Inc\Geslib\Base\Cron;
 use Inc\Geslib\Base\WooCommerce_Customizations;
 use Inc\Geslib\Base\Enqueue;
 use Inc\Geslib\Base\GeslibEditorialController;
+use Inc\Geslib\Base\GeslibAuthorController;
 use Inc\Geslib\Base\GeslibHelloController;
 use Inc\Geslib\Base\GeslibProductCatController;
 use Inc\Geslib\Base\GeslibProductController;
@@ -54,6 +55,7 @@ final class Init {
       GeslibProductCatController::class,
       GeslibProductController::class,
       GeslibEditorialController::class,
+      GeslibAuthorController::class,
       GeslibStoreProductsFormController::class,
       GeslibProcessAllCommand::class,
       Enqueue::class,

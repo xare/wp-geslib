@@ -27,11 +27,15 @@ use Inc\Geslib\Api\GeslibLogListTable;
         $lines_count = $wpdb->get_col($lines_count_sql);
         ?>
     <form method="post">
-        <select name="filter_start_date"></select>
-        <select name="filter_end_date"></select>
-        <select name="filter_status"></select>
-        <select name="filter_filenames"></select>
-        <select name="filter_lines_count"></select>
+        <select name="filter_status">
+            <option value="">All Status</option>
+            <?php foreach ($statuses as $status): ?>
+                <option value="<?php echo esc_attr($status); ?>" <?php selected(isset($_POST['filter_status']) && $_POST['filter_status'] === $status); ?>>
+                    <?php echo esc_html($status); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <input type="submit" value="Filter"/>
     </form>
     <!-- Page display -->
     <?php

@@ -41,8 +41,9 @@ class Cron extends BaseController {
         $geslibApiDbLoggerManager = new GeslibApiDbLoggerManager;
         $geslibApiStoreData = new GeslibApiStoreData;
         $geslibApiReadFiles->readFolder();
-        // Check if there are queues of type 'store_products' and execute them
-        // Check if there are queues of type 'store_authors' and execute them
+        // Purge queues
+        // Former calls to the cron may have stopped for some reason, before opening the next file.
+        // Make sure the queues are processed before starting parsing more files.
         $queuetypes = ['store_products', 'build_content', 'store_autors', 'store_categories', 'store_editorials', 'store_lines', ];
         foreach( $queuetypes as $queuetype ) {
             $geslibApiDbQueueManager->processFromQueue( $queuetype );

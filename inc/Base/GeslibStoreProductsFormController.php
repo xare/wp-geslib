@@ -81,8 +81,8 @@ class GeslibStoreProductsFormController extends BaseController
     public function ajaxHandleCheckFile() {
         check_ajax_referer('geslib_store_products_form', 'geslib_nonce');
         update_option('geslib_admin_notice', 'File Checked!');
-        $geslibApiReadFiles = new GeslibApiReadFiles;
-        $loggedFiles = $geslibApiReadFiles->listFilesInFolder();
+        $geslibApiDbLogManager = new GeslibApiDbLogManager;
+		$loggedFiles = $geslibApiDbLogManager->fetchLoggedFilesFromDb();
         wp_send_json_success([
             'message' => 'Archivos en la carpeta geslib y su status en la tabla geslib_log',
             'loggedFiles' => json_encode($loggedFiles, true),

@@ -36,6 +36,13 @@ class GeslibApiReadFiles {
 	 * - If no files present then finish and return false
 	 * - Loop each files, if it´s a zip unzip and move the .zip file to a zip folder
 	 *
+	 * Called by:
+	 * - Cron.php
+	 * - GeslibStoreProductsFromController.php
+	 * - GeslibLogCommand.php
+	 * - GeslibProcessAllCommand.php
+	 * - GeslibStoreProductsCommand.php
+	 *
 	 * @return mixed
 	 */
 	public function readFolder(): mixed {
@@ -70,22 +77,82 @@ class GeslibApiReadFiles {
 				}
 			}
 			$filenames[] = $fileInfo['filename'];
-			$this->insert2geslibLog( $fileInfo['filename'] );
+			$this->_insert2geslibLog( $fileInfo['filename'] );
 		}
 		return $filenames;
 	}
 	/**
 	 * insert2geslibLog
 	 * Inserts a file info into geslib_log for the first time status="logged"
+	 * Called by:
+	 * - GeslibApiReadFiles.php function readFile()
 	 *
 	 * @param  string $filename
 	 * @return void
 	 */
-	public function insert2geslibLog( string $filename ): void {
+	private function _insert2geslibLog( string $filename ): void {
 		$geslibApiDbLogManager = new GeslibApiDbLogManager;
 		if ( !$geslibApiDbLogManager->isFilenameExists( basename( $filename ))) {
 			$geslibApiDbLogManager->insertLogData( basename( $filename ), 'logged', count( file( $this->mainFolderPath . $filename )));
 		}
+	}
+
+	/**
+	 * unzipFile
+	 * Unzips a file.
+	 * Called by GeslibApiLines.php
+	 *
+	 * @param  string $path
+	 * @return string|false
+	 */
+	public function unzipFile(string $path): string|false {
+		// Check if the ZIP file is already unzipped
+		if ( !$this->_isUnzipped($path, $this->mainFolderPath) ) {
+			// Initialize the ZipArchive class
+			$zip = new ZipArchive;
+			if ($zip->open( $path )) {
+				// Extract the ZIP file to the same folder
+				$zip->extractTo($this->mainFolderPath);
+				$extractedFilename = $zip->getNameIndex(0);
+				$zip->close();
+				return (string) $extractedFilename;
+			} else {
+				// Handle error
+				error_log('Could not open the ZIP file.');
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * countFilesInFolder
+	 * Called from
+	 * - GeslibUpdateValuesController.php
+	 * - tab1_content.php
+	 *
+	 * @return int
+	 */
+	public function countFilesInFolder(): int {
+		return (int) count($this->listfilesInFolder());
+	}
+
+	/**
+	 * _isUnzipped
+	 * Function to check if the file is already unzipped
+	 *
+	 * @param  string $zipPath
+	 * @param  string $unzipDir
+	 * @return mixed
+	 */
+	private function _isUnzipped(string $zipPath, string $unzipDir): mixed {
+		$zip = new ZipArchive;
+		if ($zip->open($zipPath)) {
+			for ($i = 0; $i < $zip->numFiles; $i++) {
+				$filename = $zip->getNameIndex($i);
+				return file_exists($unzipDir . $filename);
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -100,69 +167,19 @@ class GeslibApiReadFiles {
 	}
 
 	/**
-	 * countFilesInFolder
-	 *
-	 * @return int
-	 */
-	public function countFilesInFolder(): int{
-		return (int) count($this->listfilesInFolder());
-	}
-
-	// Function to check if the file is already unzipped
-	/**
-	 * isUnzipped
-	 *
-	 * @param  string $zipPath
-	 * @param  string $unzipDir
-	 * @return mixed
-	 */
-	public function isUnzipped(string $zipPath, string $unzipDir): mixed {
-		$zip = new ZipArchive;
-		if ($zip->open($zipPath)) {
-			for ($i = 0; $i < $zip->numFiles; $i++) {
-				$filename = $zip->getNameIndex($i);
-				return file_exists($unzipDir . $filename);
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * unzipFile
-	 *
-	 * @param  string $path
-	 * @return mixed
-	 */
-	public function unzipFile(string $path): mixed {
-		// Check if the ZIP file is already unzipped
-		if ( !$this->isUnzipped($path, $this->mainFolderPath) ) {
-			// Initialize the ZipArchive class
-			$zip = new ZipArchive;
-			if ($zip->open( $path )) {
-				// Extract the ZIP file to the same folder
-				$zip->extractTo($this->mainFolderPath);
-				$extractedFilename = $zip->getNameIndex(0);
-				$zip->close();
-			} else {
-				// Handle error
-				echo 'Could not open the ZIP file.';
-			}
-		}
-
-		return (string) $extractedFilename;
-	}
-
-
-	/**
 	 * countLines
+	 * Counts the number of line of the INTER file
+	 * Called from
+	 * - GeslibFilesListTable
+	 * - tab3_content.php
 	 *
 	 * @param  string $filename
-	 * @return mixed
+	 * @return int|false
 	 */
-	public function countLines( string $filename ): mixed {
+	public function countLines( string $filename ): int|false {
 		// Check if the file exists
 		if( file_exists( $filename ) && is_file( $filename ) )
-			return count( file( $filename ) );
+			return (int) count( file( $filename ) );
 		else
 			return false; // Return false if file not found
 	}
@@ -170,13 +187,14 @@ class GeslibApiReadFiles {
 	/**
 	 * countLinesWithGP4
 	 * Used to show the "files" table in the admin interface.
-	 * - called from GeslibFilesController
+	 * - called from GeslibFilesListTable
+	 * - called from tab3_content.php
 	 *
 	 * @param  string $filename
 	 * @param  string $type
 	 * @return array|false
 	 */
-	public function countLinesWithGP4(string $filename, string $type='product'): mixed {
+	public function countLinesWithGP4(string $filename, string $type='product'): array|false {
 		// Check if the file exists
 		$codes  = ['GP4', '1L','3'];
 		if (!file_exists($filename)) {
@@ -217,5 +235,4 @@ class GeslibApiReadFiles {
 		fclose( $handle ); // Close the file handle
 		return (array) $countsArray; // Return the counts
 	}
-
 }

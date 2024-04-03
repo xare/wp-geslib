@@ -1,26 +1,6 @@
 <?php
 class GeslibApi {
 
-    public function messageThis(string $message, string $type = "success", array $placeholders = []) {
-        $type = ($type == "notice") ? "info" : $type;
-        $allowed_types = ['success', 'warning', 'error', 'info'];
-
-        if (!in_array($type, $allowed_types)) {
-            wp_die('Invalid message type provided: ' . $type);
-            return;
-        }
-
-        if (!empty($placeholders)) {
-            $message = strtr($message, $placeholders);
-        }
-
-        add_action('admin_notices', function() use ($message, $type) {
-            echo '<div class="notice notice-'. $type.' is-dismissible">
-                <p>'.$message.'</p>
-            </div>';
-        });
-    }
-
     public function fileThis(string $message, string $type = "Notice", array $placeholders = []) {
         $logPath = ABSPATH . 'wp-content/plugins/geslib/logs/geslibError.log';
 

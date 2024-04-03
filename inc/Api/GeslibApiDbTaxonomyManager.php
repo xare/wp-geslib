@@ -291,4 +291,18 @@ class GeslibApiDbTaxonomyManager extends GeslibApiDbManager {
 			}
 		}
 	}
+
+	public function removeUncategorizedCategory() {
+		// Get all products
+		$args = array(
+			'post_type' => 'product',
+			'posts_per_page' => -1,
+			'fields' => 'ids',
+		);
+
+		// Loop for each product
+		// For each product get all the categories.
+		// If category === 'uncategorized' remove it.
+
+	}
 }

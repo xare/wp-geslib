@@ -209,7 +209,7 @@ class GeslibApiDbLinesManager extends GeslibApiDbManager {
      * Get Authors from Geslib Lines
      *
      * @global wpdb $wpdb WordPress database abstraction object.
-     * @return mixed Array of authors or false on failure.
+     * @return mixed Array of categories or false on failure.
      */
     public function getCategoriesFromGeslibLines(): mixed {
         global $wpdb;

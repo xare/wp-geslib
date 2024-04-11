@@ -61,7 +61,7 @@ namespace Inc\Geslib\Base;
     $queue_sql = "CREATE TABLE $queue_table_name (
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         log_id mediumint(9) unsigned,
-        geslib_id text,
+        geslib_id mediumint(9) unsigned,
         type varchar(255) NOT NULL,
         data text,
         PRIMARY KEY (id)
@@ -70,7 +70,7 @@ namespace Inc\Geslib\Base;
     $logger_sql = "CREATE TABLE $logger_table_name(
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         log_id mediumint(9) unsigned,
-        geslib_id text,
+        geslib_id mediumint(9) unsigned,
         action varchar(255) NOT NULL,
         entity varchar(255) NOT NULL,
         metadata text,

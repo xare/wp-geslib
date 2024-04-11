@@ -216,6 +216,15 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 
 	/**
 	 * processFromQueue
+	 * Define a mapping of types to their respective processing functions
+	 * Type
+	 *
+	 *		'build_content' => 'processBatchBuildContent',
+	 *		'store_lines' => 'processBatchStoreLines',
+	 *		'store_products' => 'processBatchStoreProducts',
+	 *		'store_autors' => 'processBatchStoreAutors',
+	 * 		'store_editorials' => 'processBatchStoreEditorials',
+	 *		'store_categories' => 'processBatchStoreCategories',
 	 *
 	 * @param  mixed $type
 	 * @return bool
@@ -224,16 +233,7 @@ class GeslibApiDbQueueManager extends GeslibApiDbManager {
 		global $wpdb;
         $table_name = $wpdb->prefix . self::GESLIB_QUEUES_TABLE;
 
-		// Define a mapping of types to their respective processing functions
-		// Type
-		/*
-			'build_content' => 'processBatchBuildContent',
-			'store_lines' => 'processBatchStoreLines',
-			'store_products' => 'processBatchStoreProducts',
-			'store_autors' => 'processBatchStoreAutors',
-			'store_editorials' => 'processBatchStoreEditorials',
-			'store_categories' => 'processBatchStoreCategories',
-		*/
+
 		$methodName = 'processBatch' . str_replace('_', '', ucwords($type, '_'));
 
 		// Check if the provided type is valid

@@ -10,21 +10,9 @@ use Inc\Geslib\Api\GeslibLogListTable;
         global $wpdb;
         $logTable = $wpdb->prefix . 'geslib_log';
 
-        // Fetch distinct types
-        $start_date_sql = "SELECT DISTINCT start_date FROM {$logTable}";
-        $start_dates = $wpdb->get_col($start_date_sql);
-
-        $end_date_sql = "SELECT DISTINCT end_date FROM {$logTable}";
-        $end_dates = $wpdb->get_col($end_date_sql);
-
         $status_sql = "SELECT DISTINCT status FROM {$logTable}";
         $statuses = $wpdb->get_col($status_sql);
 
-        $filenames_sql = "SELECT DISTINCT filename FROM {$logTable}";
-        $filenames = $wpdb->get_col($filenames_sql);
-
-        $lines_count_sql = "SELECT DISTINCT lines_count FROM {$logTable}";
-        $lines_count = $wpdb->get_col($lines_count_sql);
         ?>
     <form method="post">
         <select name="filter_status">

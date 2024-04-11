@@ -313,13 +313,21 @@ class GeslibApiLines {
 		if (! isset($keys)) return false;
 		$content_array = array_combine($keys, $data);
 		$content_array = $this->geslibApiSanitize->sanitize_content_array($content_array);
+
 		$geslibApiDbLinesManager->insertData( $content_array, $data[1], $log_id, 'product' );
 	}
 
+	/**
+	 * process6E
+	 * Procesa las líneas 6E aquí
+	 * 6E|Articulo|Contador|Texto|
+	 * 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.\n\nAcompanyant les imatges, les paraules antigues de la Mediterr�nia. Ausi�s March, Estell�s, al-Russaf�, Llach, Espriu, Aub, Ibn Arab�, Lorca, Darwix o Kavafis. Veus de les tradicions que ens han forjat com a civilitzacions. Per� tamb� peda�os de relats i hist�ries poc conegudes que l'autor va descobrir durant tres mesos de conviv�ncia en aquest tros de Palestina. Hist�ries de saviesa i dolor. Hist�ries de paci�ncia i perseveran�a. Hist�ries de p�rdua i renaixen�a. Hist�ries de la bellesa oculta de Gaza.|
+	 * @param  mixed $data
+	 * @param  mixed $log_id
+	 * @return void
+	 */
 	private function process6E($data, int $log_id) {
-		// Procesa las líneas 6E aquí
-		// 6E|Articulo|Contador|Texto|
-		// 6E|1|1|Els grans mitjans ens han repetit fins a l'infinit escenes de mort i destrucci� a Gaza, per� ens han amagat la quotidianitat m�s extraordin�ria. Viure morir i n�ixer a Gaza recull un centenar de fotografies que ens mostren les meravelles que David Segarra es va trobar enmig de la trag�dia: la capacitat de viure, d'estimar, de resistir i de sobreviure malgrat l'horror.\n\nAcompanyant les imatges, les paraules antigues de la Mediterr�nia. Ausi�s March, Estell�s, al-Russaf�, Llach, Espriu, Aub, Ibn Arab�, Lorca, Darwix o Kavafis. Veus de les tradicions que ens han forjat com a civilitzacions. Per� tamb� peda�os de relats i hist�ries poc conegudes que l'autor va descobrir durant tres mesos de conviv�ncia en aquest tros de Palestina. Hist�ries de saviesa i dolor. Hist�ries de paci�ncia i perseveran�a. Hist�ries de p�rdua i renaixen�a. Hist�ries de la bellesa oculta de Gaza.|
+
 		$geslib_id = $data[1];
 		$content_array['sinopsis'] = $data[3];
 		$content_array = $this->geslibApiSanitize->sanitize_content_array( $content_array );

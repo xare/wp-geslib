@@ -47,13 +47,14 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
      */
     public function isFilenameExists( string $filename ): bool {
         global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$query = $wpdb->prepare(
             "SELECT COUNT(*)
-			FROM $wpdb->prefix.self::GESLIB_LOG_TABLE
+			FROM {$table_name}
 			WHERE filename = %s",
             $filename
         );
-        return (bool) $wpdb->get_var($query) > 0;
+        return (bool) !is_null($wpdb->get_var($query));
     }
 
     /**
@@ -64,10 +65,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 */
 	public function getLogQueuedFile(): string {
 		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$query = $wpdb->prepare(
             "SELECT filename
-			FROM $wpdb->prefix.self::GESLIB_LOG_TABLE
-			WHERE status = '%s'",
+			FROM {$table_name}
+			WHERE status = %s",
             'queued'
         );
         return (string) $wpdb->get_var($query);
@@ -88,13 +90,14 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 */
 	public function getGeslibLoggedId(): int {
 		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$query = $wpdb->prepare("SELECT
 									id
-								FROM '$wpdb->prefix.self::GESLIB_LOG_TABLE'
-								WHERE status='%s'
+								FROM {$table_name}
+								WHERE status = %s
 								ORDER BY id ASC
 								LIMIT %d",
-								'logged', 1);
+								['logged', 1]);
 		return (int) $wpdb->get_var($query);
 	}
 
@@ -108,10 +111,11 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 */
 	public function getGeslibLoggedFilename( int $log_id ): string {
 		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$query = $wpdb->prepare("SELECT
 									filename
-								FROM $wpdb->prefix.self::GESLIB_LOG_TABLE
-								WHERE id='%d'",
+								FROM {$table_name}
+								WHERE id = %d",
 								$log_id);
 		return (string) $wpdb->get_var($query);
 	}
@@ -132,11 +136,12 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 */
 	function checkLoggedStatus(): bool {
 		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$sql = $wpdb->prepare( "SELECT COUNT(*)
-								FROM $wpdb->prefix . self::GESLIB_LOG_TABLE
+								FROM {$table_name}
 								WHERE status = %s
-								ORDER BY id='%s'",
-								'logged', 'ASC' );
+								ORDER BY id = %s",
+								['logged', 'ASC'] );
 		return (bool) $wpdb->get_var( $sql ) > 0;
 	}
 
@@ -147,9 +152,10 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
      */
     public function getLogQueuedFilename(): string {
 		global $wpdb;
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		$sql = $wpdb->prepare(
 			"SELECT filename
-			FROM $wpdb->prefix . self::GESLIB_LOG_TABLE
+			FROM {$table_name}
             WHERE status = %s LIMIT %d",
 			['queued', 1 ]
 		);
@@ -166,13 +172,13 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 */
 	public function setLogTableToLogged(): bool {
 		global $wpdb;
-
+		$table_name = $wpdb->prefix . self::GESLIB_LOG_TABLE;
 		// SQL to update the status
-		$sql = "UPDATE $wpdb->prefix . self::GESLIB_LOG_TABLE SET status = 'logged'";
+		$sql = "UPDATE {$table_name} SET status = %s";
 
 		// Execute the query
 		try {
-			$wpdb->query($sql);
+			$wpdb->query($sql, 'logged');
 			return true;
 		} catch (\Exception $exception) {
 			error_log($exception->getMessage());
@@ -186,14 +192,15 @@ class GeslibApiDbLogManager extends GeslibApiDbManager {
 	 * - GeslibUpdateValuesController
 	 * - tab1_content.php
 	 *
-	 * @param  mixed $status
-	 * @return int
+	 * @param  string $status
+	 * @return mixed
 	 */
-	public function countGeslibLogStatus( string $status ) :int {
+	public function countGeslibLogStatus( string $status ): int {
 		global $wpdb;
-		return (int) $wpdb->get_var( "SELECT COUNT(*)
-								FROM $wpdb->prefix.self::GESLIB_LOG_TABLE
-								WHERE status='".$status."'");
+		$table_name = $wpdb->prefix.self::GESLIB_LOG_TABLE;
+		return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*)
+								FROM {$table_name}
+								WHERE status = %s", $status));
 	}
 
     /**

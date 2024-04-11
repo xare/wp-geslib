@@ -11,6 +11,7 @@ function updateStatistics() {
         },
         success: function(response) {
             if( response.success ) {
+                console.info(response);
                 // Update your DOM elements here
                 const targets = [
                     'total-products',

@@ -17,9 +17,7 @@
         public function adminLogTable() {
             return require_once("{$this->plugin_templates_path}/adminGeslibLogs.php");
         }
-        public function adminLinesTable() {
-            return require_once("{$this->plugin_templates_path}/adminGeslibLines.php");
-        }
+
         public function adminQueuesTable() {
             return require_once("{$this->plugin_templates_path}/adminGeslibQueues.php");
         }

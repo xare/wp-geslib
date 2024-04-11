@@ -21,25 +21,9 @@ class GeslibLogListTable extends WP_List_Table {
         $logTable = $wpdb->prefix . $geslibApiDbLogManager::GESLIB_LOG_TABLE;
         // define data set for WP_List_Table => data
         $where = ''; // Initialize where clause
-        if ( isset( $_POST['filter_start_date'] ) && !empty( $_POST['filter_start_date'] )) {
-            $start_date = sanitize_text_field( $_POST['filter_start_date'] );
-            $where = $wpdb->prepare(' WHERE start_date = %s', $start_date );
-        }
-        if ( isset( $_POST['filter_end_date'] ) && !empty( $_POST['filter_end_date'] )) {
-            $end_date = sanitize_text_field( $_POST['filter_end_date'] );
-            $where = $wpdb->prepare(' WHERE end_date = %s', $end_date);
-        }
         if ( isset( $_POST['filter_status'] ) && !empty( $_POST['filter_status'] )) {
             $status = sanitize_text_field($_POST['filter_status']);
             $where = $wpdb->prepare(' WHERE status = %s', $status);
-        }
-        if ( isset( $_POST['filter_filenames']) && !empty( $_POST['filter_filenames'] )) {
-            $filenames = sanitize_text_field($_POST['filter_filenames']);
-            $where = $wpdb->prepare(' WHERE filename = %d', $filenames);
-        }
-        if ( isset( $_POST['filter_lines_count'] ) && !empty( $_POST['filter_lines_count'] )) {
-            $lines_count = sanitize_text_field( $_POST['filter_lines_count'] );
-            $where = $wpdb->prepare( ' WHERE lines_count = %d', $lines_count );
         }
 
         $orderby = isset( $_GET['orderby'] ) ? trim( $_GET['orderby'] ): "id";

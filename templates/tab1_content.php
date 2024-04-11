@@ -75,7 +75,7 @@ use Inc\Geslib\Api\GeslibApiReadFiles;
         <li>Tareas en la cola "store_lines":<br />
             <strong data-target="total-lines-queue"><?php echo $geslibApiDbQueueManager->countGeslibQueue('store_lines'); ?></strong>
         </li>
-        <li>Archivos registrados en la tabla lines:<br />
+        <li>Tareas esperando a ser procesadas:<br />
             <strong data-target="total-lines"><?php echo $geslibApiDbLinesManager->countGeslibLines(); ?></strong>
         </li>
 
